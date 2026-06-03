@@ -6,58 +6,254 @@
     <title>Oman Pakhtoon Community</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f0f2f5; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
-        input, button { width: 80%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #ccc; }
-        button { background: #1B5E20; color: white; border: none; cursor: pointer; }
-        ul { text-align: left; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #f0f2f5; }
+        .container { max-width: 1200px; margin: auto; padding: 20px; }
+        header { background: #1B5E20; color: white; padding: 20px; text-align: center; position: relative; }
+        .lang-switch { position: absolute; top: 20px; right: 20px; background: #FFD700; padding: 5px 10px; border-radius: 5px; }
+        .lang-switch select { background: #1B5E20; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer; }
+        nav { background: #D32F2F; overflow: auto; display: flex; flex-wrap: wrap; justify-content: center; }
+        nav a { padding: 14px 20px; color: white; text-decoration: none; display: inline-block; cursor: pointer; }
+        nav a:hover { background: #B71C1C; }
+        .card { background: white; padding: 20px; margin: 20px 0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .flex { display: flex; flex-wrap: wrap; gap: 20px; }
+        .flex > div { flex: 1; min-width: 250px; }
+        input, select, textarea, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        button { background: #1B5E20; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0D3B0F; }
+        .billboard { background: #000; color: white; text-align: center; padding: 15px; overflow: hidden; white-space: nowrap; }
+        .billboard span { display: inline-block; animation: scrollText 20s linear infinite; font-size: 1.5rem; }
+        @keyframes scrollText { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .announcement { background: #FFD700; color: #1B5E20; padding: 10px; text-align: center; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #1B5E20; color: white; }
+        @media (max-width: 768px) { nav a { padding: 10px; font-size: 14px; } .lang-switch { top: 10px; right: 10px; } }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>Oman Pakhtoon Community</h1>
-    <p>✅ Connected to a new, permanent database</p>
-    <form id="registerForm">
-        <input type="text" id="name" placeholder="Full Name" required><br>
-        <input type="email" id="email" placeholder="Email" required><br>
-        <button type="submit">Register (5 OMR)</button>
-    </form>
-    <h3>Total Members: <span id="memberCount">0</span></h3>
-    <ul id="memberList"></ul>
-</div>
+<header>
+    <h1 id="siteTitle">Oman Pakhtoon Community</h1>
+    <p id="siteSubtitle">سماجی خدمات اور یکجہتی فورم • وومن پختون</p>
+    <div class="lang-switch">
+        <select id="languageSelect">
+            <option value="en">English</option>
+            <option value="ur">اردو</option>
+            <option value="ps">پښتو</option>
+        </select>
+    </div>
+</header>
+<nav>
+    <a onclick="showPage('home')" data-i18n="navHome">Home</a>
+    <a onclick="showPage('register')" data-i18n="navRegister">Register (5 OMR)</a>
+    <a onclick="showPage('reports')" data-i18n="navReports">Reports</a>
+    <a onclick="showPage('donations')" data-i18n="navDonations">Donations</a>
+    <a onclick="showPage('elections')" data-i18n="navElections">Elections</a>
+    <a onclick="showPage('cabinet')" data-i18n="navCabinet">Cabinet</a>
+    <a onclick="showPage('admin')" data-i18n="navAdmin">Admin</a>
+</nav>
+<div class="container" id="content"></div>
 
 <script>
-    // === YOUR SUPABASE CREDENTIALS (already inserted) ===
+    // ==================== SUPABASE CONFIG (NEW CREDENTIALS) ====================
     const SUPABASE_URL = 'https://wzaqiijdjzfxlnbxpqfr.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YXFpaWpkanpmeGxuYnhwcWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc4MjYsImV4cCI6MjA5NjA4MzgyNn0.XTl9ukPQl3QwQVZjUYYGJh79j0k-gzLQNCebnInW_ic';
-
     const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    async function loadMembers() {
-        const { data, error } = await supabase.from('users').select('*');
-        if (error) console.error(error);
-        else {
-            const list = document.getElementById('memberList');
-            list.innerHTML = data.map(m => `<li>${m.name} – ${m.email}</li>`).join('');
-            document.getElementById('memberCount').innerText = data.length;
+    let currentUser = null;
+    let currentLang = 'en';
+
+    // ==================== TRANSLATIONS ====================
+    const translations = {
+        en: {
+            siteTitle: 'Oman Pakhtoon Community', siteSubtitle: 'Social Services & Unity Forum • Women Pakhtoon',
+            navHome: 'Home', navRegister: 'Register (5 OMR)', navReports: 'Reports', navDonations: 'Donations',
+            navElections: 'Elections', navCabinet: 'Cabinet', navAdmin: 'Admin',
+            totalMembers: 'Total Members', totalDonations: 'Total Donations', activeReports: 'Active Reports',
+            latestNews: 'Latest News', embassyContact: 'Pakistani Embassy', upcomingEvents: 'Upcoming Events',
+            regTitle: 'Member Registration (5 OMR)', fullName: 'Full Name', email: 'Email', phone: 'Phone',
+            district: 'District', bloodGroup: 'Blood Group', employer: 'Employer', city: 'City',
+            emergencyContact: 'Emergency Contact', photoUpload: 'Upload Photo', submitReg: 'Register & Pay 5 OMR (Mock)',
+            regSuccess: 'Registration successful! Awaiting admin approval.',
+            reportTitle: 'Submit a Report (Death / Injury / Lost)', reportType: 'Type', description: 'Description',
+            date: 'Date', location: 'Location', contactInfo: 'Contact Info', submitReport: 'Submit Report',
+            yourReports: 'Your Reports', status: 'Status',
+            donationTitle: 'Support the Community', bankAccount: 'Bank Account', holder: 'Holder',
+            mobileTransfer: 'Mobile Transfer', donorName: 'Your Name', amount: 'Amount (OMR)',
+            recordDonation: 'Record Donation (Admin will verify)', donationHistory: 'Donation History',
+            electionsTitle: 'Elections', vote: 'Vote', noElections: 'No active elections.',
+            cabinetTitle: 'Cabinet Members', noCabinet: 'No cabinet members yet.',
+            adminTitle: 'Admin Dashboard', pendingApprovals: 'Pending Member Approvals',
+            approve: 'Approve', reject: 'Reject', exportCSV: 'Export All Members to CSV',
+            loginFirst: 'Please login/register first.', adminOnly: 'Admin access only.', goBack: 'Return to Home',
+            alreadyLogged: 'You are already logged in.', loading: 'Loading...'
+        },
+        ur: {
+            siteTitle: 'عمان پختون کمیونٹی', siteSubtitle: 'سماجی خدمات اور یکجہتی فورم • خواتین پختون',
+            navHome: 'ہوم', navRegister: 'رجسٹریشن (5 OMR)', navReports: 'رپورٹس', navDonations: 'عطیات',
+            navElections: 'الیکشن', navCabinet: 'کابینہ', navAdmin: 'ایڈمن',
+            totalMembers: 'کل ممبران', totalDonations: 'کل عطیات', activeReports: 'فعال رپورٹس',
+            latestNews: 'تازہ ترین خبریں', embassyContact: 'پاکستانی سفارت خانہ', upcomingEvents: 'آنے والے ایونٹس',
+            regTitle: 'ممبر رجسٹریشن (5 OMR)', fullName: 'پورا نام', email: 'ای میل', phone: 'فون نمبر',
+            district: 'ضلع', bloodGroup: 'بلڈ گروپ', employer: 'ملازم', city: 'شہر',
+            emergencyContact: 'ایمرجنسی رابطہ', photoUpload: 'تصویر اپ لوڈ کریں', submitReg: 'رجسٹر کریں اور 5 OMR ادا کریں (مثال)',
+            regSuccess: 'رجسٹریشن کامیاب! ایڈمن کی منظوری کا انتظار کریں۔',
+            reportTitle: 'رپورٹ جمع کریں (موت / چوٹ / گمشدگی)', reportType: 'قسم', description: 'تفصیل',
+            date: 'تاریخ', location: 'مقام', contactInfo: 'رابطہ معلومات', submitReport: 'رپورٹ جمع کریں',
+            yourReports: 'آپ کی رپورٹس', status: 'حالت',
+            donationTitle: 'کمیونٹی کی مدد کریں', bankAccount: 'بینک اکاؤنٹ', holder: 'اکاؤنٹ ہولڈر',
+            mobileTransfer: 'موبائل ٹرانسفر', donorName: 'آپ کا نام', amount: 'رقم (OMR)',
+            recordDonation: 'عطیہ ریکارڈ کریں (ایڈمن تصدیق کرے گا)', donationHistory: 'عطیات کی تاریخ',
+            electionsTitle: 'الیکشن', vote: 'ووٹ دیں', noElections: 'کوئی فعال الیکشن نہیں۔',
+            cabinetTitle: 'کابینہ کے اراکین', noCabinet: 'ابھی تک کوئی کابینہ ممبر نہیں۔',
+            adminTitle: 'ایڈمن ڈیش بورڈ', pendingApprovals: 'زیر التواء ممبران کی منظوری',
+            approve: 'منظور کریں', reject: 'مسترد کریں', exportCSV: 'تمام ممبران کو CSV میں ایکسپورٹ کریں',
+            loginFirst: 'براہ کرم پہلے لاگ ان/رجسٹر کریں۔', adminOnly: 'صرف ایڈمن کی رسائی۔', goBack: 'ہوم پر واپس جائیں',
+            alreadyLogged: 'آپ پہلے سے لاگ ان ہیں۔', loading: 'لوڈ ہو رہا ہے...'
+        },
+        ps: {
+            siteTitle: 'عمان پښتون ټولنه', siteSubtitle: 'ټولنیز خدمتونه او یووالي • ښځې پښتانه',
+            navHome: 'کور', navRegister: 'ثبت نام (5 OMR)', navReports: 'راپورونه', navDonations: 'مرستې',
+            navElections: 'انتخابات', navCabinet: 'کابینه', navAdmin: 'مدیر',
+            totalMembers: 'ټول غړي', totalDonations: 'ټولې مرستې', activeReports: 'فعال راپورونه',
+            latestNews: 'وروستي خبرونه', embassyContact: 'د پاکستان سفارت', upcomingEvents: 'راتلونکي پیښې',
+            regTitle: 'د غړي ثبت نام (5 OMR)', fullName: 'بشپړ نوم', email: 'برېښلیک', phone: 'تلیفون شمېره',
+            district: 'ولسوالۍ', bloodGroup: 'د وینې ګروپ', employer: 'کارکوونکی', city: 'ښار',
+            emergencyContact: 'بیړنۍ اړیکه', photoUpload: 'انځور پورته کړئ', submitReg: 'ثبت نام او 5 OMR ورکړئ (نمونه)',
+            regSuccess: 'ثبت نام بریالی! د مدیر تایید ته انتظار وکړئ.',
+            reportTitle: 'راپور وسپارئ (مرګ / ټپ / ورکیدل)', reportType: 'ډول', description: 'تشریح',
+            date: 'نېټه', location: 'ځای', contactInfo: 'اړیکې معلومات', submitReport: 'راپور وسپارئ',
+            yourReports: 'ستاسو راپورونه', status: 'حالت',
+            donationTitle: 'د ټولنې ملاتړ وکړئ', bankAccount: 'بانکي حساب', holder: 'حساب لرونکی',
+            mobileTransfer: 'موبایل لېږد', donorName: 'ستاسو نوم', amount: 'مقدار (OMR)',
+            recordDonation: 'مرسته ثبت کړئ (مدیر به تایید کړي)', donationHistory: 'د مرستو تاریخ',
+            electionsTitle: 'انتخابات', vote: 'رایه ورکړئ', noElections: 'فعال انتخابات نشته.',
+            cabinetTitle: 'د کابینې غړي', noCabinet: 'تر اوسه د کابینې غړي نشته.',
+            adminTitle: 'د مدیر پینل', pendingApprovals: 'د تایید په انتظار غړي',
+            approve: 'تایید کړئ', reject: 'رد کړئ', exportCSV: 'ټول غړي CSV ته صادر کړئ',
+            loginFirst: 'مهرباني وکړئ لومړی ننوځئ / ثبت شئ.', adminOnly: 'یوازې مدیر لاسرسی لري.', goBack: 'کور ته راستون شئ',
+            alreadyLogged: 'تاسو دمخه ننوتلي یاست.', loading: 'پورته کیږي...'
         }
+    };
+    function t(key) { return translations[currentLang][key] || translations.en[key] || key; }
+    function updatePageText() {
+        document.getElementById('siteTitle').innerText = t('siteTitle');
+        document.getElementById('siteSubtitle').innerText = t('siteSubtitle');
+        document.querySelectorAll('[data-i18n]').forEach(el => { const key = el.getAttribute('data-i18n'); if (key) el.innerText = t(key); });
+        const page = document.getElementById('content').getAttribute('data-page') || 'home';
+        showPage(page);
+    }
+    document.getElementById('languageSelect').addEventListener('change', (e) => { currentLang = e.target.value; updatePageText(); });
+
+    // ==================== AUTH ====================
+    async function checkSession() { const { data: { user } } = await supabase.auth.getUser(); currentUser = user; return user; }
+    async function isAdmin() { if (!currentUser) return false; const { data } = await supabase.from('users').select('role').eq('id', currentUser.id).single(); return data?.role === 'admin'; }
+
+    // ==================== PAGE RENDERING (FULL) ====================
+    async function showPage(page) {
+        const content = document.getElementById('content');
+        content.setAttribute('data-page', page);
+        if (page === 'home') await renderHome(content);
+        else if (page === 'register') await renderRegister(content);
+        else if (page === 'reports') await renderReports(content);
+        else if (page === 'donations') await renderDonations(content);
+        else if (page === 'elections') await renderElections(content);
+        else if (page === 'cabinet') await renderCabinet(content);
+        else if (page === 'admin') await renderAdmin(content);
     }
 
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = document.getElementById('name').value;
-        const email = document.getElementById('email').value;
-        const { error } = await supabase.from('users').insert([{ name, email }]);
-        if (error) alert(error.message);
-        else {
-            alert('Registration successful!');
-            document.getElementById('name').value = '';
-            document.getElementById('email').value = '';
-            loadMembers();
-        }
-    });
+    async function renderHome(container) {
+        const { count: memberCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
+        const { data: donations } = await supabase.from('donations').select('amount');
+        const totalDonations = donations?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
+        const { count: reportCount } = await supabase.from('reports').select('*', { count: 'exact', head: true });
+        const { data: announcements } = await supabase.from('announcements').select('message').eq('isActive', true).limit(1);
+        const announcementText = announcements?.[0]?.message || '📢 ' + t('siteTitle');
+        const { data: ads } = await supabase.from('ads').select('imageUrl, linkUrl').eq('isActive', true);
+        let billboardHtml = '<div class="billboard"><span>🌟 ' + t('siteTitle') + ' 🌟</span></div>';
+        if (ads && ads.length) { billboardHtml = `<div class="billboard">${ads.map(ad => `<a href="${ad.linkUrl || '#'}" target="_blank"><img src="${ad.imageUrl}" style="height:60px; margin:0 15px;"></a>`).join('')}</div>`; }
+        const { data: news } = await supabase.from('news').select('title, content, date').order('date', { ascending: false }).limit(3);
+        const newsHtml = news?.map(n => `<div><strong>${n.title}</strong> (${new Date(n.date).toLocaleDateString()})<p>${n.content.substring(0, 120)}...</p></div>`).join('') || '<p>' + t('loading') + '</p>';
+        const { data: embassy } = await supabase.from('embassy').select('*').limit(1);
+        const embassyInfo = embassy?.[0] || { address: 'Villa No. 1297, Way No. 3119, Shatti Al-Qurm, Muscat', phone: '+968 2469 6140', email: 'parepmuscat@mofa.gov.pk', hours: 'Sun-Thu 8am-2pm' };
+        container.innerHTML = `
+            <div class="announcement">${announcementText}</div>
+            ${billboardHtml}
+            <div class="flex">
+                <div class="card"><h3>✅ ${t('totalMembers')}</h3><p style="font-size:2.5em;">${memberCount || 0}</p></div>
+                <div class="card"><h3>💰 ${t('totalDonations')}</h3><p style="font-size:2.5em;">${totalDonations} OMR</p></div>
+                <div class="card"><h3>📋 ${t('activeReports')}</h3><p style="font-size:2.5em;">${reportCount || 0}</p></div>
+            </div>
+            <div class="flex">
+                <div class="card"><h3>📰 ${t('latestNews')}</h3>${newsHtml}</div>
+                <div class="card"><h3>🏛️ ${t('embassyContact')}</h3><p>📍 ${embassyInfo.address}<br>📞 ${embassyInfo.phone}<br>✉️ ${embassyInfo.email}<br>🕒 ${embassyInfo.hours}</p></div>
+            </div>
+            <div class="card"><h3>📅 ${t('upcomingEvents')}</h3><div id="eventsList">${t('loading')}</div></div>
+        `;
+        const { data: events } = await supabase.from('events').select('*').order('date', { ascending: true }).limit(5);
+        document.getElementById('eventsList').innerHTML = events?.map(e => `<div><strong>${e.title}</strong> – ${new Date(e.date).toLocaleDateString()} at ${e.time}<br>📍 ${e.location}</div>`).join('') || '<p>' + t('loading') + '</p>';
+    }
 
-    loadMembers();
+    async function renderRegister(container) {
+        if (currentUser) { container.innerHTML = `<div class="card"><p>${t('alreadyLogged')} <a href="#" onclick="showPage('home')">${t('goBack')}</a></p></div>`; return; }
+        container.innerHTML = `<div class="card"><h2>📝 ${t('regTitle')}</h2><form id="regForm"><input type="text" id="name" placeholder="${t('fullName')}" required><input type="email" id="email" placeholder="${t('email')}" required><input type="tel" id="phone" placeholder="${t('phone')}" required><input type="text" id="district" placeholder="${t('district')}"><select id="bloodGroup"><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option></select><input type="text" id="employer" placeholder="${t('employer')}"><input type="text" id="city" placeholder="${t('city')}"><input type="text" id="emergency" placeholder="${t('emergencyContact')}"><input type="file" id="photo" accept="image/*"><button type="submit">${t('submitReg')}</button></form></div>`;
+        document.getElementById('regForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value, email = document.getElementById('email').value, phone = document.getElementById('phone').value;
+            const { data, error } = await supabase.auth.signUp({ email, password: 'temp123' });
+            if (error) alert(error.message);
+            else { await supabase.from('users').insert([{ id: data.user.id, name, email, phone, role: 'member', status: 'pending' }]); alert(t('regSuccess')); showPage('home'); }
+        });
+    }
+
+    async function renderReports(container) {
+        if (!currentUser) { container.innerHTML = `<div class="card"><p>${t('loginFirst')} <a href="#" onclick="showPage('register')">${t('navRegister')}</a></p></div>`; return; }
+        container.innerHTML = `<div class="card"><h2>📢 ${t('reportTitle')}</h2><form id="reportForm"><select id="type"><option>death</option><option>injury</option><option>lost</option></select><textarea id="description" placeholder="${t('description')}" rows="3" required></textarea><input type="date" id="date" required><input type="text" id="location" placeholder="${t('location')}"><input type="text" id="contact" placeholder="${t('contactInfo')}"><button type="submit">${t('submitReport')}</button></form></div><div class="card"><h3>📋 ${t('yourReports')}</h3><div id="userReports"></div></div>`;
+        document.getElementById('reportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const type = document.getElementById('type').value, description = document.getElementById('description').value, date = document.getElementById('date').value, location = document.getElementById('location').value, contactInfo = document.getElementById('contact').value;
+            const { error } = await supabase.from('reports').insert([{ userId: currentUser.id, type, description, date, location, contactInfo, status: 'pending' }]);
+            if (error) alert(error.message); else alert(t('submitReport'));
+            loadUserReports();
+        });
+        async function loadUserReports() { const { data } = await supabase.from('reports').select('*').eq('userId', currentUser.id); document.getElementById('userReports').innerHTML = `<tr><th>${t('reportType')}</th><th>${t('description')}</th><th>${t('status')}</th><th>${t('date')}</th></tr>${data?.map(r => `<tr><td>${r.type}</td><td>${r.description}</td><td>${r.status}</td><td>${new Date(r.date).toLocaleDateString()}</td></tr>`).join('')}</table>`; }
+        await loadUserReports();
+    }
+
+    async function renderDonations(container) {
+        const { data: donations } = await supabase.from('donations').select('*').order('date', { ascending: false });
+        container.innerHTML = `<div class="card"><h2>🤲 ${t('donationTitle')}</h2><p><strong>${t('bankAccount')}:</strong> 01011503131001 &nbsp;|&nbsp; <strong>${t('holder')}:</strong> Ikram Bacha</p><p><strong>${t('mobileTransfer')}:</strong> <a href="tel:99111870">99111870</a></p><form id="donationForm"><input type="text" id="donorName" placeholder="${t('donorName')}" required><input type="number" id="amount" placeholder="${t('amount')}" required><button type="submit">${t('recordDonation')}</button></form></div><div class="card"><h3>📜 ${t('donationHistory')}</h3><div id="donationList"></div></div>`;
+        document.getElementById('donationForm').addEventListener('submit', async (e) => {
+            e.preventDefault(); const donorName = document.getElementById('donorName').value, amount = parseFloat(document.getElementById('amount').value);
+            await supabase.from('donations').insert([{ donorName, amount, date: new Date(), status: 'pending' }]); alert(t('recordDonation')); renderDonations(container);
+        });
+        document.getElementById('donationList').innerHTML = `<table><th>${t('donorName')}</th><th>${t('amount')}</th><th>${t('date')}</th><th>${t('status')}</th></tr>${donations?.map(d => `<tr><td>${d.donorName}</td><td>${d.amount}</td><td>${new Date(d.date).toLocaleDateString()}</td><td>${d.status}</td></tr>`).join('')}</table>`;
+    }
+
+    async function renderElections(container) {
+        const { data: elections } = await supabase.from('elections').select('*').order('endDate', { ascending: false });
+        container.innerHTML = `<div class="card"><h2>🗳️ ${t('electionsTitle')}</h2><div id="electionsList"></div></div>`;
+        document.getElementById('electionsList').innerHTML = elections?.map(e => `<div style="border-bottom:1px solid #ccc; padding:10px;"><strong>${e.title}</strong> (${t('date')}: ${new Date(e.endDate).toLocaleDateString()})<br><button onclick="vote(${e.id})">${t('vote')}</button></div>`).join('') || '<p>' + t('noElections') + '</p>';
+    }
+    window.vote = async (electionId) => { if (!currentUser) { alert(t('loginFirst')); return; } alert(t('vote') + ' (demo)'); };
+
+    async function renderCabinet(container) {
+        const { data: members } = await supabase.from('cabinet').select('*').order('order');
+        container.innerHTML = `<div class="card"><h2>👥 ${t('cabinetTitle')}</h2><div class="flex">${members?.map(m => `<div class="card" style="text-align:center;"><img src="${m.photoUrl || 'https://via.placeholder.com/120'}" width="100" style="border-radius:50%;"><h3>${m.name}</h3><p><strong>${m.role}</strong></p><p>${m.bio || ''}</p></div>`).join('') || '<p>' + t('noCabinet') + '</p>'}</div></div>`;
+    }
+
+    async function renderAdmin(container) {
+        if (!await isAdmin()) { container.innerHTML = `<div class="card"><p>⛔ ${t('adminOnly')} <a href="#" onclick="showPage('home')">${t('goBack')}</a></p></div>`; return; }
+        const { data: pendingMembers } = await supabase.from('users').select('*').eq('status', 'pending');
+        container.innerHTML = `<div class="card"><h2>🛡️ ${t('adminTitle')}</h2><h3>${t('pendingApprovals')}</h3><div id="pendingList"></div><hr><button onclick="exportData()">📎 ${t('exportCSV')}</button></div>`;
+        document.getElementById('pendingList').innerHTML = `<table><th>${t('fullName')}</th><th>${t('email')}</th><th>${t('phone')}</th><th>${t('status')}</th></tr>${pendingMembers?.map(m => `<tr><td>${m.name}</td><td>${m.email}</td><td>${m.phone}</td><td><button onclick="approveMember('${m.id}')">✅ ${t('approve')}</button> <button onclick="rejectMember('${m.id}')">❌ ${t('reject')}</button></td></tr>`).join('')}</tr>`;
+    }
+    window.approveMember = async (id) => { await supabase.from('users').update({ status: 'approved' }).eq('id', id); alert(t('approve')); renderAdmin(document.getElementById('content')); };
+    window.rejectMember = async (id) => { await supabase.from('users').update({ status: 'rejected' }).eq('id', id); alert(t('reject')); renderAdmin(document.getElementById('content')); };
+    window.exportData = async () => { const { data } = await supabase.from('users').select('name, email, phone, status, registrationDate'); let csv = `${t('fullName')},${t('email')},${t('phone')},${t('status')},Registration Date\n` + data.map(u => `"${u.name}",${u.email},${u.phone},${u.status},${u.registrationDate}`).join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'members_export.csv'; a.click(); };
+
+    // ==================== INIT ====================
+    checkSession().then(() => showPage('home'));
 </script>
 </body>
 </html>
