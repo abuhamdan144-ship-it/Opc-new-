@@ -1,16 +1,63 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Oman Pakhtoon Community Welfare Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  </head>
-  <body class="bg-gray-100 text-gray-900 selection:bg-emerald-700 selection:text-white font-sans">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oman Pakhtoon Community</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f0f2f5; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
+        input, button { width: 80%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #ccc; }
+        button { background: #1B5E20; color: white; border: none; cursor: pointer; }
+        ul { text-align: left; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Oman Pakhtoon Community</h1>
+    <p>✅ Connected to a new, permanent database</p>
+    <form id="registerForm">
+        <input type="text" id="name" placeholder="Full Name" required><br>
+        <input type="email" id="email" placeholder="Email" required><br>
+        <button type="submit">Register (5 OMR)</button>
+    </form>
+    <h3>Total Members: <span id="memberCount">0</span></h3>
+    <ul id="memberList"></ul>
+</div>
 
+<script>
+    // === YOUR SUPABASE CREDENTIALS (already inserted) ===
+    const SUPABASE_URL = 'https://wzaqiijdjzfxlnbxpqfr.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YXFpaWpkanpmeGxuYnhwcWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc4MjYsImV4cCI6MjA5NjA4MzgyNn0.XTl9ukPQl3QwQVZjUYYGJh79j0k-gzLQNCebnInW_ic';
+
+    const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function loadMembers() {
+        const { data, error } = await supabase.from('users').select('*');
+        if (error) console.error(error);
+        else {
+            const list = document.getElementById('memberList');
+            list.innerHTML = data.map(m => `<li>${m.name} – ${m.email}</li>`).join('');
+            document.getElementById('memberCount').innerText = data.length;
+        }
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email').value;
+        const { error } = await supabase.from('users').insert([{ name, email }]);
+        if (error) alert(error.message);
+        else {
+            alert('Registration successful!');
+            document.getElementById('name').value = '';
+            document.getElementById('email').value = '';
+            loadMembers();
+        }
+    });
+
+    loadMembers();
+</script>
+</body>
+</html>
