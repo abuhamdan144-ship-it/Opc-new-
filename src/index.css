@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Helvetica Neue", Arial, sans-serif;
+  --font-display: Georgia, serif;
+  --font-urdu: "Noto Nastaliq Urdu", Georgia, serif;
+  
+  /* Natural Tones palette variables */
+  --color-bg-natural: #f5f5f0;
+  --color-olive: #5a5a40;
+  --color-stone: #a8a090;
+  --color-clay: #d4a373;
+  --color-ink: #2d2926;
+  --color-white: #ffffff;
+
+  /* Overwrite default emerald palette with Natural Tones Olive */
+  --color-emerald-50: #f5f5f0;
+  --color-emerald-100: #e5e5dc;
+  --color-emerald-200: #d5d5ca;
+  --color-emerald-300: #c5c5b8;
+  --color-emerald-400: #a5a590;
+  --color-emerald-500: #85856b;
+  --color-emerald-600: #707050;
+  --color-emerald-700: #5a5a40; /* Olive Green default */
+  --color-emerald-800: #4a4a35;
+  --color-emerald-900: #3a3a2a;
+  --color-emerald-950: #2d2926; /* Ink color */
+
+  /* Overwrite gray/slate to match the natural stone / ink style */
+  --color-gray-50: #fbfbfa;
+  --color-gray-100: #f5f5f0; /* natural bg */
+  --color-gray-200: #e5e5dc; /* stone boundary */
+  --color-gray-300: #d5d5ca;
+  --color-gray-400: #c5c5b8;
+  --color-gray-500: #a8a090; /* Stone secondary default */
+  --color-gray-600: #8a8275;
+  --color-gray-700: #6d665a;
+  --color-gray-800: #4f4b43;
+  --color-gray-900: #2d2926; /* Ink default */
+
+  /* Overwrite yellow/amber palette with Clay brown/gold */
+  --color-yellow-50: #fbf7f4;
+  --color-yellow-100: #f6ede3;
+  --color-yellow-200: #ebd6c1;
+  --color-yellow-300: #e2be9b;
+  --color-yellow-400: #d4a373; /* Terracotta/Clay default */
+  --color-yellow-500: #c29160;
+  --color-yellow-600: #a8794c;
+  --color-yellow-700: #8c603a;
+  --color-yellow-800: #704b2b;
+  --color-yellow-900: #5a3c22;
+  --color-yellow-950: #3b2513;
+}
+
+@layer utilities {
+  /* RTL specific stylings if needed */
+  .rtl-flip {
+    transform: scaleX(-1);
+  }
+}
+
+/* Custom marquee utilities */
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+

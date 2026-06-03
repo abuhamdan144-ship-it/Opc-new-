@@ -1,0 +1,6 @@
+{
+  "name": "Oman Pakhtoon Community",
+  "description": "A welfare and social connection platform supporting the Pakhtoon diaspora in Oman with transparent community funds, consular assistance embassy access, emergency case dispatch, and online elections.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
