@@ -123,6 +123,14 @@ export default function App() {
   const [adminNewsContent, setAdminNewsContent] = useState('');
   const [adminNewsCategory, setAdminNewsCategory] = useState<'general' | 'announcement' | 'event'>('general');
 
+  // Admin Login States
+  const [adminUsernameInput, setAdminUsernameInput] = useState('');
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem('opc_admin_auth') === 'true';
+  });
+  const [loginError, setLoginError] = useState('');
+
   // Donation Search & Filter ledger
   const [donationSearchQuery, setDonationSearchQuery] = useState('');
 
@@ -168,6 +176,16 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('opc_voted_ids', JSON.stringify(votedIds));
   }, [votedIds]);
+
+  useEffect(() => {
+    localStorage.setItem('opc_admin_auth', isAdminLoggedIn ? 'true' : 'false');
+  }, [isAdminLoggedIn]);
+
+  useEffect(() => {
+    if (simulatedRole !== 'admin') {
+      setIsAdminLoggedIn(false);
+    }
+  }, [simulatedRole]);
 
   // Translate helpers
   const t = (key: string) => {
@@ -1546,33 +1564,162 @@ export default function App() {
 
             {/* 🛡️ tab 7: SUPREME ADMIN CONSOLE */}
             {activeTab === 'admin' && (
-              <div className="space-y-8">
-                {/* 1. Header warning/authorization state info */}
-                <div className="bg-amber-500/10 rounded-2xl border border-amber-500/20 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="w-8 h-8 text-amber-600 shrink-0" />
-                    <div className="space-y-0.5">
-                      <h3 className="text-sm font-bold text-gray-900">
-                        Authorized Role: Finance Secretary Desk (Ikram Bacha)
+              !isAdminLoggedIn ? (
+                <div className="max-w-md mx-auto py-8">
+                  <div className="bg-white rounded-3xl border border-gray-200 shadow-xs overflow-hidden">
+                    {/* Brand Banner Accent */}
+                    <div className="bg-emerald-800 text-white p-6 text-center space-y-2 relative">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-700/40 rounded-full blur-xl"></div>
+                      <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center mx-auto border border-white/20">
+                        <ShieldAlert className="w-7 h-7 text-yellow-300" />
+                      </div>
+                      <h3 className="text-lg font-bold font-display tracking-tight text-white mt-2">
+                        Oman Pakhtoon Community
                       </h3>
-                      <p className="text-xs text-gray-500">
-                        Simulating administrator tasks. Approvals immediately adjust user states, metrics counters, and announcement streams.
+                      <p className="text-xs text-emerald-100 font-sans">
+                        Supreme Welfare Cabinet Security Portal
                       </p>
                     </div>
+
+                    <div className="p-6 sm:p-8 space-y-6">
+                      <div className="text-center space-y-1">
+                        <h4 className="text-base font-extrabold text-gray-900 font-sans">
+                          Admin Authentication Area
+                        </h4>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          Please verify your credentials below to log in and access registration files, treasury receipts, and disaster management controls.
+                        </p>
+                      </div>
+
+                      {loginError && (
+                        <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold flex items-start gap-2.5">
+                          <XCircle className="w-4.5 h-4.5 shrink-0 text-rose-600" />
+                          <span>{loginError}</span>
+                        </div>
+                      )}
+
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        if (adminUsernameInput.trim().toLowerCase() === 'admin' && adminPasswordInput === 'admin123') {
+                          setIsAdminLoggedIn(true);
+                          setSimulatedRole('admin');
+                          setLoginError('');
+                          setAdminUsernameInput('');
+                          setAdminPasswordInput('');
+                        } else {
+                          setLoginError('Invalid username or password credentials. Please verify keys and retry.');
+                        }
+                      }} className="space-y-4">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-750 uppercase tracking-wider block">
+                            Username / صارف کا نام
+                          </label>
+                          <input 
+                            type="text"
+                            required
+                            value={adminUsernameInput}
+                            onChange={(e) => setAdminUsernameInput(e.target.value)}
+                            placeholder="e.g. admin"
+                            className="w-full text-xs md:text-sm px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-755 uppercase tracking-wider block">
+                            Password / پاس ورڈ
+                          </label>
+                          <input 
+                            type="password"
+                            required
+                            value={adminPasswordInput}
+                            onChange={(e) => setAdminPasswordInput(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full text-xs md:text-sm px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs tracking-wider uppercase py-3 rounded-xl transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5 mt-2"
+                        >
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>Verify & Access Console</span>
+                        </button>
+                      </form>
+
+                      {/* Demo credential helpful badge */}
+                      <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-2xl p-4.5 space-y-2.5 text-xs">
+                        <div className="flex items-center gap-1.5 font-bold text-slate-850 uppercase tracking-wider">
+                          <Sparkles className="w-3.5 h-3.5 text-yellow-600 shrink-0" />
+                          <span>Demo Portal Credentials</span>
+                        </div>
+                        <p className="text-gray-650 leading-relaxed">
+                          For instant validation of all administrative workflows, log in with the following demo credential keys:
+                        </p>
+                        <div className="bg-white/90 p-3 rounded-xl border border-yellow-200 font-mono text-xs space-y-1 hover:border-amber-300 transition">
+                          <div>Username: <strong className="text-emerald-800 select-all">admin</strong></div>
+                          <div>Password: <strong className="text-emerald-800 select-all">admin123</strong></div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdminUsernameInput('admin');
+                            setAdminPasswordInput('admin123');
+                          }}
+                          className="w-full bg-white hover:bg-yellow-50 text-gray-800 font-bold border border-yellow-300 rounded-xl py-2 transition text-xs shadow-3xs"
+                        >
+                          ✨ Quick Autofill Credentials
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  {simulatedRole !== 'admin' ? (
-                    <button 
-                      onClick={() => setSimulatedRole('admin')}
-                      className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] uppercase tracking-wider px-3.5 py-2 rounded-xl shrink-0 cursor-pointer"
-                    >
-                      Assume Secretary role
-                    </button>
-                  ) : (
-                    <span className="text-xs text-emerald-700 font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-200 shadow-3xs">
-                      &bull; Simulation Active
-                    </span>
-                  )}
                 </div>
+              ) : (
+                <div className="space-y-8">
+                  {/* 1. Header warning/authorization state info */}
+                  <div className="bg-amber-500/10 rounded-2xl border border-amber-500/20 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck className="w-8 h-8 text-amber-600 shrink-0" />
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-gray-900">
+                            Authorized Role: Finance Secretary Desk (Ikram Bacha)
+                          </h3>
+                          <span className="text-[10px] font-extrabold uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-full animate-float">
+                            Logged In
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Simulating administrator tasks. Approvals immediately adjust user states, metrics counters, and announcement streams.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => {
+                          setIsAdminLoggedIn(false);
+                          setAdminUsernameInput('');
+                          setAdminPasswordInput('');
+                        }}
+                        className="bg-white hover:bg-gray-100 hover:border-gray-400 text-gray-750 font-bold text-xs px-3.5 py-2.5 border rounded-xl transition cursor-pointer"
+                      >
+                        🔒 Logout (لاگ آؤٹ)
+                      </button>
+                      {simulatedRole !== 'admin' ? (
+                        <button 
+                          onClick={() => setSimulatedRole('admin')}
+                          className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] uppercase tracking-wider px-3.5 py-2 rounded-xl shrink-0 cursor-pointer"
+                        >
+                          Assume Secretary role
+                        </button>
+                      ) : (
+                        <span className="text-xs text-emerald-700 font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-200 shadow-3xs">
+                          &bull; Simulation Active
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                 {/* 2. Registration approvals desk */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -1802,7 +1949,8 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            )}
+            )
+          )}
 
             {/* ✉️ tab 8: CONTACT US */}
             {activeTab === 'contact' && (
