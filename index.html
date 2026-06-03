@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diagnostic</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Checking...</h1>
+    <div id="output"></div>
+    <script>
+        (async () => {
+            const out = document.getElementById('output');
+            out.innerHTML = 'Connecting to Supabase...<br>';
+            try {
+                const supabase = supabase.createClient(
+                    'https://wzaqiijdjzfxlnbxpqfr.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YXFpaWpkanpmeGxuYnhwcWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc4MjYsImV4cCI6MjA5NjA4MzgyNn0.XTl9ukPQl3QwQVZjUYYGJh79j0k-gzLQNCebnInW_ic'
+                );
+                out.innerHTML += '✅ Client created.<br>';
+                const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
+                if (error) {
+                    out.innerHTML += '❌ Error: ' + error.message;
+                } else {
+                    out.innerHTML += '✅ Connected! Table "users" exists.';
+                }
+            } catch (err) {
+                out.innerHTML += '❌ Exception: ' + err.message;
+            }
+        })();
+    </script>
+</body>
+</html>
