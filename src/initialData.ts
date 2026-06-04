@@ -1,231 +1,174 @@
-import { CabinetMember, NewsItem, Member, EmergencyReport, Donation, Election, Advertisement } from './types';
-
-export const initialCabinet: CabinetMember[] = [
-  {
-    id: "cab-1",
-    name: "Haji Sher Zaman Achakzai",
-    role: "President",
-    phone: "+968 9934 1872",
-    location: "Ruwi, Muscat",
-    bio: "Coordinating community representation with the Pakistan Embassy. Active in Muscat for over 22 years helping workers with legal compliance.",
-    photoUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200"
-  },
-  {
-    id: "cab-2",
-    name: "Ikram Bacha",
-    role: "Finance Secretary / Treasurer",
-    phone: "+968 9911 1870",
-    location: "Sultana, Muscat",
-    bio: "Manages the central OMR welfare account. Responsible for direct disbursement of body dispatch and hospital funds to distressed workers.",
-    photoUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=200&h=200"
-  },
-  {
-    id: "cab-3",
-    name: "Bilal Ahmad Yousafzai",
-    role: "General Secretary",
-    phone: "+968 9322 4001",
-    location: "Sohar, Oman",
-    bio: "Supervises external affairs, Omani municipality registration permissions, and coordinates blood donor drives in the North Al Batinah region.",
-    photoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200&h=200"
-  },
-  {
-    id: "cab-4",
-    name: "Dr. Fazal Rehman",
-    role: "Welfare & Health Coordinator",
-    phone: "+968 9128 3491",
-    location: "Salalah, Dhofar",
-    bio: "Oversees local hospital representation for injured construction laborers, emergency medical logistics, and health camps in southern Oman.",
-    photoUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=200&h=200"
-  }
-];
-
-export const initialNews: NewsItem[] = [
-  {
-    id: "news-1",
-    title: "National ID Renewal Drive in Muscat & Salalah Offices",
-    content: "The Pakistani Embassy has opened localized consular counters this weekend to fast-track Pakistani Passport and CNIC renewal for laborers working in the interiors. Welfare council volunteers will be assisting with translation and form fillings.",
-    date: "2026-06-01",
-    category: "event"
-  },
-  {
-    id: "news-2",
-    title: "Distressed Worker Body Transition Air Cargo Update",
-    content: "The treasury board discharged 500 OMR to pay for the air cargo transition costs of a late brother from Khyber Pakhtunkhwa who met with a fatal workplace accident in Nizwa. Proper consular dispatch succeeded yesterday morning.",
-    date: "2026-05-28",
-    category: "announcement"
-  },
-  {
-    id: "news-3",
-    title: "Emergency Medical Relief Camps 2026 Launched",
-    content: "A free medical diagnostic and check-up camp is arranged in Barka next Friday in collaboration with local Omani clinic groups. Blood group typing for registration database entries will also be available on-spot.",
-    date: "2026-05-25",
-    category: "event"
-  }
-];
+import { Member, EmergencyReport, Donation, Election, NewsItem, Advertisement } from './types';
 
 export const initialMembers: Member[] = [
   {
-    id: "user-1",
-    name: "Amjad Ali",
-    email: "amjad.nizwa@gmail.com",
-    phone: "+968 9481 0291",
-    bloodGroup: "O+",
-    district: "Swat",
-    city: "Nizwa",
-    employer: "Al-Ansar Infrastructure",
-    emergencyContact: "Farman Ali (Brother) - +92 300 1234567",
-    status: "approved",
-    photoUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200&h=200",
-    joinedDate: "2026-01-10"
+    id: "mem-01",
+    fullName: "Khan Wali Shah",
+    phone: "+96892445678",
+    passportNo: "PC7788123",
+    omaniId: "12345678",
+    registrationDate: "2026-02-15",
+    durationOfOmanStay: "8 years",
+    profession: "Scaffolding Inspector",
+    isWelfareEligible: true,
+    status: "approved"
   },
   {
-    id: "user-2",
-    name: "Irfan Khan Pashteen",
-    email: "irfan.psh@yahoo.com",
-    phone: "+968 9112 0045",
-    bloodGroup: "A-",
-    district: "Mardan",
-    city: "Muscat",
-    employer: "Muscat Modern Carpentry",
-    emergencyContact: "Said Khan (Uncle) - +968 9112 0040",
-    status: "approved",
-    photoUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200&h=200",
-    joinedDate: "2026-02-15"
+    id: "mem-02",
+    fullName: "Amir Khan Afridi",
+    phone: "+96898112233",
+    passportNo: "PD2234567",
+    omaniId: "87654321",
+    registrationDate: "2026-03-10",
+    durationOfOmanStay: "12 years",
+    profession: "Heavy Equipment Operator",
+    isWelfareEligible: true,
+    status: "approved"
   },
   {
-    id: "user-3",
-    name: "Shaukat Wazir",
-    email: "shaukat.wazir@outlook.com",
-    phone: "+968 9568 2818",
-    bloodGroup: "B+",
-    district: "Waziristan",
-    city: "Salalah",
-    employer: "Dhofar Logistics Ltd",
-    emergencyContact: "Haji Wazir - +92 965 992211",
-    status: "pending",
-    photoUrl: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=200&h=200",
-    joinedDate: "2026-06-02"
+    id: "mem-03",
+    fullName: "Sartaj Masood",
+    phone: "+96894556677",
+    passportNo: "PE9944111",
+    omaniId: "56743210",
+    registrationDate: "2026-05-20",
+    durationOfOmanStay: "1 year",
+    profession: "Mason Labor",
+    isWelfareEligible: true,
+    status: "pending"
   }
 ];
 
 export const initialReports: EmergencyReport[] = [
   {
-    id: "rep-1",
-    userId: "user-1",
-    reporterName: "Amjad Ali",
-    type: "injury",
-    description: "Brother Khan Wali suffered a severe fall from scaffolding at Al-Khuwair site hospital block. We need immediate blood group matching for O- negative blood bottle donation and volunteer translation at Khoula Hospital.",
+    id: "rep-01",
+    reporterName: "Sher Afzal",
+    reporterPhone: "+96891234567",
+    severity: "high",
+    category: "accident",
+    location: "Al-Khuwair Site Clinic",
+    description: "Brother Khan Wali had a major fall and is admitted at Khoula Hospital. We need blood donors matching O negative. Contact coordinating volunteer directly.",
     date: "2026-06-02",
-    time: "08:45 AM",
-    location: "Khoula Hospital, Muscat",
-    contactInfo: "+968 9481 0291 (Amjad Ali)",
     status: "verified"
   },
   {
-    id: "rep-2",
-    userId: "user-2",
-    reporterName: "Irfan Khan Pashteen",
-    type: "lost_passport",
-    description: "Lost passport and labor permit cards during a transit bus trip from Salalah to Muscat. Need guidelines on consulate travel affidavit paperwork to avoid municipal administrative fine penalty.",
-    date: "2026-05-30",
-    time: "03:20 PM",
-    location: "Azaiba Bus Terminal, Muscat",
-    contactInfo: "+968 9112 0045",
-    status: "resolved"
+    id: "rep-02",
+    reporterName: "Gul Zaman",
+    reporterPhone: "+96895554321",
+    severity: "medium",
+    category: "lost_passport",
+    location: "Ruwi Police HQ Area",
+    description: "Passport document bag lost during Al-Jabal commute. If any driver finds or receives it, submit immediately to the OPC central desk.",
+    date: "2026-06-03",
+    status: "pending"
   }
 ];
 
 export const initialDonations: Donation[] = [
   {
-    id: "don-1",
-    donorName: "Haji Sher Zaman Achakzai",
-    amount: 150,
-    date: "2026-05-20",
-    status: "verified",
-    method: "bank"
+    id: "don-01",
+    donorName: "Dr. Muhammad Yousafzai",
+    amount: 150.000,
+    date: "2026-05-28",
+    method: "bank",
+    transactionId: "TXN889241029",
+    status: "verified"
   },
   {
-    id: "don-2",
-    donorName: "An Anonymous Brother",
-    amount: 25,
-    date: "2026-05-27",
-    status: "verified",
-    method: "mobile"
+    id: "don-02",
+    donorName: "Ruwi Pavement Labor Guild",
+    amount: 85.500,
+    date: "2026-06-01",
+    method: "mobile_pay",
+    transactionId: "REF008741",
+    status: "verified"
   },
   {
-    id: "don-3",
-    donorName: "Shaukat Wazir",
-    amount: 5,
-    date: "2026-06-02",
-    status: "pending",
-    method: "bank"
+    id: "don-03",
+    donorName: "Najeeb Ullah Yousuf",
+    amount: 40.000,
+    date: "2026-06-04",
+    method: "bank",
+    transactionId: "BM-9988241",
+    status: "pending"
   }
 ];
 
 export const initialElections: Election[] = [
   {
-    id: "elec-1",
-    title: "Executive Welfare Council Cycle (2026 - 2028)",
-    description: "Choose the Chief Welfare Supervisor role to direct emergency response investments and lead the Pakistan Embassy liaison delegation.",
-    endDate: "2026-07-15",
-    isActive: true,
+    id: "elec-01",
+    title: "OPC Core Welfare Cabinet - Finance Secretary Election 2026",
+    UrduTitle: "او پی سی مرکزی کابینہ - الیکشن برائے فنانشل سیکرٹری ۲۰۲۶",
+    PashtoTitle: "د او پی سی مرکزی کابینه - مالي سیکرټر د ټاکنو ۲۰۲۶ مالي لایحه",
+    date: "2026-06-15",
+    active: true,
     candidates: [
       {
-        id: "cand-1",
-        name: "Haji Sher Zaman Achakzai",
-        role: "Incumbent President & Spokesman",
-        votes: 114,
-        photoUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200",
-        bio: "Decades of tireless legal coordination, highly responsive communication, and direct Omani government connections."
+        id: "cand-01",
+        name: "Haji Shah Jehan (Swabi)",
+        description: "15+ years managing community funds, transparent audit advocate.",
+        UrduDesc: "۱۵ سال سے زائد اکاؤنٹنگ اور فنڈ مینجمنٹ کا تجربہ، شفاف آڈٹ کے حامی۔",
+        PashtoDesc: "د حساب او مالي چارو ۱۵ کلن کاري تجربه لروونکی، د رڼو حسابونو مبارز.",
+        votes: 142
       },
       {
-        id: "cand-2",
-        name: "Bacha Khan Yousafzai",
-        role: "Challenger - Senior Muscat Representative",
-        votes: 98,
-        photoUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=200&h=200",
-        bio: "Proposes an app-based tracking of body cargo status and increased local clinics distribution for low-salary laborers."
+        id: "cand-02",
+        name: "Eng. Sher Zaman Yousafzai (Mardan)",
+        description: "Vocal reformist, focusing on digitizing emergency labor welfare grants.",
+        UrduDesc: "جدید ڈیجیٹل اصلاحات اور ایمرجنسی لیبر فنڈز کو کمپیوٹرائز کرنے کے حامی۔",
+        PashtoDesc: "د جیدو اصلاحاتو غوښتونکی، د غصبي او غریبانو فریز فنڈز کمپیوټري کوونکی.",
+        votes: 118
       }
     ]
   }
 ];
 
-export const initialAds: Advertisement[] = [
+export const initialNews: NewsItem[] = [
   {
-    id: "ad-1",
-    title: "Safe Cargo Door-to-Door Dispatch (KP & Punjab)",
-    advertiserName: "KP-Oman Swift Cargo Logistics Ltd",
-    imageUrl: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=600&h=300",
-    targetUrl: "https://wa.me/96899341872",
-    amountPaid: 45,
-    startDate: "2026-05-01",
-    expiryDate: "2026-08-30",
-    isActive: true,
-    notes: "Prime placement above the central treasury ledger. Standard rate card: 15 OMR per month."
+    id: "news-01",
+    title: "OPC Free Medical Camp & Blood Donation Drive 2026",
+    UrduTitle: "عمان پختون کمیونٹی فری میڈیکل کیمپ اور بلڈ کیمپ ۲۰۲۶",
+    PashtoTitle: "د عمان پښتنو وړیا روغتیايي کمپ او د وینې د ورکړې لویه غونډه",
+    category: "Health Camp",
+    content: "Under patronage of the elder board, OPC is organizing a free diagnostic health camp at Ruwi near Khoula Hospital on June 10, 2026. Specialized medical boards and blood matching indices will be active.",
+    UrduContent: "بزرگان او پی سی کے مشورے سے رووی میں ۱۰ جون ۲۰۲۶ کو فری طبی کیمپ اور بلڈ ٹیسٹنگ لگایا جا رہا ہے۔ تمام مزدور بھائیوں سے گزارش ہے کہ بھرپور شرکت فرما کر اس کارِ خیر میں حصہ لیں۔",
+    PashtoContent: "د مشرانو شورا تر سیوري لاندې د جون پر ۱۰مه رووي کې وړیا طبي معاینه او د وینې د ورکړې ځانګړی کمپ جوړیږي. تر څو د بیمارو پښتنو په وخت چاره وشي.",
+    date: "2026-06-03",
+    important: true
   },
   {
-    id: "ad-2",
-    title: "Khyber Shinwari Barbeque - Muscat & Ruwi Branches",
-    advertiserName: "Shinwari Traditional Food Group",
-    imageUrl: "https://images.unsplash.com/photo-1603360946369-dc9bb6258143?auto=format&fit=crop&q=80&w=600&h=300",
-    targetUrl: "https://wa.me/96899111870",
-    amountPaid: 60,
-    startDate: "2026-06-01",
-    expiryDate: "2026-09-30",
-    isActive: true,
-    notes: "Sponsors of the Barka health camp drive."
-  },
-  {
-    id: "ad-3",
-    title: "Al-Muqtadir Heavy Scaffolding & Excavator Hire",
-    advertiserName: "Al-Muqtadir Machinery Co.",
-    imageUrl: "https://images.unsplash.com/photo-1541625602330-2277a4c46182?auto=format&fit=crop&q=80&w=600&h=300",
-    targetUrl: "tel:+96893224001",
-    amountPaid: 30,
-    startDate: "2026-04-15",
-    expiryDate: "2026-06-15",
-    isActive: true,
-    notes: "Special discounts for registered OPC active cabinet members."
+    id: "news-02",
+    title: "Guidelines for Resident Card Renewal in Muscat Districts",
+    UrduTitle: "مسقط میں رہائشی کارڈ کی تجدید کے لیے اہم ہدایات",
+    PashtoTitle: "مسقط ولسوالۍ کښې د اقامې کارت د نوي کولو لپاره لازم لارښود",
+    category: "Legal Advice",
+    content: "Important notifications regarding labor permission rules and Omani national civil card renewal rules inside Muscat governorates. Registered members can request free translations at our helpdesk.",
+    UrduContent: "مسقط میں مقیم مزدور بھائیوں کے لیے رہائشی کارڈ اور لیبر قوانین کے متعلق اہم ہدایات جاری کر دی گئی ہیں۔ ترجمہ کی سہولت ڈیسک پر موجود ہے۔",
+    PashtoContent: "د عمان د نوي سول اقامې پروسې لپاره پښتنو ته لارښوونه کیږي چې خپل کاري جواز په وخت نوی کړي. د ژباړې همکاران مو مرستې ته چمتو دي.",
+    date: "2026-06-01",
+    important: false
   }
 ];
 
+export const initialAds: Advertisement[] = [
+  {
+    id: "ad-01",
+    sponsorName: "Al-Khyber Royal Travel Muscat",
+    bannerUrl: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=640&auto=format&fit=crop",
+    tagline: "Exclusive Direct Flights to Peshawar & Islamabad. Extra 10kg baggage allowance for registered labor card holders!",
+    UrduTagline: "پشاور اور اسلام آباد کے لیے سستے فضائی ٹکٹس اور مزدور کارڈ ہولڈرز کے لیے ۱۰ کلو اضافی وزن کا تحفہ!",
+    PashtoTagline: "پېښور او اسلام اباد ته ځانګړې رخصتي الوتنې. د راجستر شوو پښتنو لپاره ۱۰ کیلو اضافي سامان وړلو اسانتیا!",
+    clickUrl: "https://travel.example.com/opc",
+    isActive: true
+  },
+  {
+    id: "ad-02",
+    sponsorName: "Khyber Pakhtunkhwa Cargo Logistics",
+    bannerUrl: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=640&auto=format&fit=crop",
+    tagline: "Door-to-door cargo service from Ruwi to any district in KPK. Heavily discounted rates with certified delivery tracking.",
+    UrduTagline: "عمان سے خیبر پختونخواہ کے ہر کونے میں کارگو کی بااعتماد گھر تک ترسیل، بالخصوص مزدور برادری کے لیے خصوصی رعایت۔",
+    PashtoTagline: "له عمان څخه غني پښتونخوا ته د کور را کور کارګو خدمت. د باروړونکو موټرو د هر کلي تر دروازې په تایید سره رسول.",
+    clickUrl: "https://cargo.example.com",
+    isActive: true
+  }
+];

@@ -1,28 +1,27 @@
+export type Language = 'en' | 'ur' | 'ps';
+
 export interface Member {
   id: string;
-  name: string;
-  email: string;
+  fullName: string;
   phone: string;
-  bloodGroup: string;
-  district: string;
-  city: string;
-  employer: string;
-  emergencyContact: string;
+  passportNo: string;
+  omaniId: string;
+  registrationDate: string;
+  durationOfOmanStay: string;
+  profession: string;
+  isWelfareEligible: boolean;
   status: 'pending' | 'approved' | 'rejected';
-  photoUrl?: string;
-  joinedDate: string;
 }
 
 export interface EmergencyReport {
   id: string;
-  userId: string;
   reporterName: string;
-  type: 'death' | 'injury' | 'lost_passport' | 'other';
+  reporterPhone: string;
+  severity: 'low' | 'medium' | 'high';
+  category: 'death' | 'accident' | 'lost_passport' | 'medical_need' | 'general';
+  location: string;
   description: string;
   date: string;
-  time?: string;
-  location: string;
-  contactInfo: string;
   status: 'pending' | 'verified' | 'resolved';
 }
 
@@ -31,58 +30,58 @@ export interface Donation {
   donorName: string;
   amount: number;
   date: string;
+  method: 'bank' | 'mobile_pay';
+  transactionId: string;
   status: 'pending' | 'verified' | 'rejected';
-  method: 'bank' | 'mobile';
 }
 
-export interface CabinetMember {
+export interface Candidate {
   id: string;
   name: string;
-  role: string;
-  phone: string;
-  location: string;
-  bio: string;
-  photoUrl: string;
-}
-
-export interface NewsItem {
-  id: string;
-  title: string;
-  content: string;
-  date: string;
-  category: 'general' | 'announcement' | 'event';
-}
-
-export interface ElectionCandidate {
-  id: string;
-  name: string;
-  role: string;
+  description: string;
+  UrduDesc: string;
+  PashtoDesc: string;
   votes: number;
-  photoUrl: string;
-  bio: string;
 }
 
 export interface Election {
   id: string;
   title: string;
-  description: string;
-  candidates: ElectionCandidate[];
-  isActive: boolean;
-  endDate: string;
+  UrduTitle: string;
+  PashtoTitle: string;
+  date: string;
+  active: boolean;
+  candidates: Candidate[];
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  UrduTitle: string;
+  PashtoTitle: string;
+  category: string;
+  content: string;
+  UrduContent: string;
+  PashtoContent: string;
+  date: string;
+  important: boolean;
 }
 
 export interface Advertisement {
   id: string;
-  title: string;
-  advertiserName: string;
-  imageUrl: string; 
-  targetUrl: string; 
-  amountPaid: number; 
-  startDate: string; 
-  expiryDate: string; 
+  sponsorName: string;
+  bannerUrl: string;
+  tagline: string;
+  UrduTagline: string;
+  PashtoTagline: string;
+  clickUrl: string;
   isActive: boolean;
-  notes?: string;
 }
 
-export type Language = 'en' | 'ur' | 'ps';
-
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  date: string;
+}

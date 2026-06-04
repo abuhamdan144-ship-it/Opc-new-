@@ -2,158 +2,145 @@
   "entities": {
     "Member": {
       "title": "Member",
-      "description": "User registration record for membership cards and status tracking",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "description": "Unique user or member ID string" },
-        "name": { "type": "string", "description": "Full name of the member" },
-        "email": { "type": "string", "description": "Email address" },
-        "phone": { "type": "string", "description": "Omani or Pakistani active phone number" },
-        "bloodGroup": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
-        "district": { "type": "string", "description": "Home district name in Pakistan of origin (e.g., Swat, Mardan)" },
-        "city": { "type": "string", "description": "Current city or area of residence in Oman" },
-        "employer": { "type": "string", "description": "Employer name or company of work in Oman" },
-        "emergencyContact": { "type": "string", "description": "Emergency helper and family relations contact" },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
-        "photoUrl": { "type": "string", "description": "Profile picture base64 or hosted image url" },
-        "joinedDate": { "type": "string", "description": "Date of registration in system" }
-      },
-      "required": ["id", "name", "email", "phone", "bloodGroup", "district", "city", "employer", "emergencyContact", "status", "joinedDate"]
-    },
-    "EmergencyReport": {
-      "title": "EmergencyReport",
-      "description": "Assistance and emergency welfare request logged by community members",
+      "description": "Registered welfare member document",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "passportNo": { "type": "string" },
+        "omaniId": { "type": "string" },
+        "registrationDate": { "type": "string" },
+        "durationOfOmanStay": { "type": "string" },
+        "profession": { "type": "string" },
+        "isWelfareEligible": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["id", "fullName", "phone", "passportNo", "omaniId", "status"]
+    },
+    "EmergencyReport": {
+      "title": "EmergencyReport",
+      "description": "Urgent medical / labor incident alert",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
         "reporterName": { "type": "string" },
-        "type": { "type": "string", "enum": ["death", "injury", "lost_passport", "other"] },
+        "reporterPhone": { "type": "string" },
+        "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+        "category": { "type": "string", "enum": ["death", "accident", "lost_passport", "medical_need", "general"] },
+        "location": { "type": "string" },
         "description": { "type": "string" },
         "date": { "type": "string" },
-        "time": { "type": "string" },
-        "location": { "type": "string" },
-        "contactInfo": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "verified", "resolved"] }
       },
-      "required": ["id", "userId", "reporterName", "type", "description", "date", "location", "contactInfo", "status"]
+      "required": ["id", "reporterName", "reporterPhone", "severity", "category", "location", "description"]
     },
     "Donation": {
       "title": "Donation",
-      "description": "Donations records in support of the Federal Welfare Trust Registry fund",
+      "description": "Financial welfare contribution log",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "donorName": { "type": "string" },
         "amount": { "type": "number" },
         "date": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
-        "method": { "type": "string", "enum": ["bank", "mobile"] }
+        "method": { "type": "string", "enum": ["bank", "mobile_pay"] },
+        "transactionId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] }
       },
-      "required": ["id", "donorName", "amount", "date", "status", "method"]
-    },
-    "NewsItem": {
-      "title": "NewsItem",
-      "description": "General announcements, events, and community updates",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "content": { "type": "string" },
-        "date": { "type": "string" },
-        "category": { "type": "string", "enum": ["general", "announcement", "event"] }
-      },
-      "required": ["id", "title", "content", "date", "category"]
+      "required": ["id", "donorName", "amount", "method", "transactionId", "status"]
     },
     "Election": {
       "title": "Election",
-      "description": "Council active election cycles with candidate boards and active properties",
+      "description": "Cabinet election poll with candidates",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string" },
-        "description": { "type": "string" },
-        "isActive": { "type": "boolean" },
-        "endDate": { "type": "string" },
-        "candidates": { "type": "array", "description": "Candidate arrays with dynamic voting metrics" }
+        "UrduTitle": { "type": "string" },
+        "PashtoTitle": { "type": "string" },
+        "date": { "type": "string" },
+        "active": { "type": "boolean" },
+        "candidates": { "type": "array" }
       },
-      "required": ["id", "title", "description", "isActive", "endDate", "candidates"]
+      "required": ["id", "title", "active", "candidates"]
+    },
+    "NewsItem": {
+      "title": "NewsItem",
+      "description": "Bulletin news item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "UrduTitle": { "type": "string" },
+        "PashtoTitle": { "type": "string" },
+        "category": { "type": "string" },
+        "content": { "type": "string" },
+        "UrduContent": { "type": "string" },
+        "PashtoContent": { "type": "string" },
+        "date": { "type": "string" },
+        "important": { "type": "boolean" }
+      },
+      "required": ["id", "title", "category", "content", "date"]
     },
     "Advertisement": {
       "title": "Advertisement",
-      "description": "Verifications sponsor advertisements for billboard presentation",
+      "description": "Sponsor banner ad billboard",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "title": { "type": "string" },
-        "advertiserName": { "type": "string" },
-        "imageUrl": { "type": "string" },
-        "targetUrl": { "type": "string" },
-        "amountPaid": { "type": "number" },
-        "startDate": { "type": "string" },
-        "expiryDate": { "type": "string" },
-        "isActive": { "type": "boolean" },
-        "notes": { "type": "string" }
+        "sponsorName": { "type": "string" },
+        "bannerUrl": { "type": "string" },
+        "tagline": { "type": "string" },
+        "UrduTagline": { "type": "string" },
+        "PashtoTagline": { "type": "string" },
+        "clickUrl": { "type": "string" },
+        "isActive": { "type": "boolean" }
       },
-      "required": ["id", "title", "advertiserName", "imageUrl", "targetUrl", "amountPaid", "startDate", "expiryDate", "isActive"]
+      "required": ["id", "sponsorName", "bannerUrl", "tagline"]
     },
-    "ContactMsg": {
-      "title": "ContactMsg",
-      "description": "Messages sent to the administrator council desk",
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Feedback suggestions inbox",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "phone": { "type": "string" },
-        "subject": { "type": "string" },
+        "email": { "type": "string" },
         "message": { "type": "string" },
-        "createdAt": { "type": "string" },
-        "read": { "type": "boolean" }
+        "date": { "type": "string" }
       },
-      "required": ["id", "name", "phone", "subject", "message", "createdAt"]
-    },
-    "AppSetting": {
-      "title": "AppSetting",
-      "description": "General settings such as current global banner announcement text",
-      "type": "object",
-      "properties": {
-        "announcement": { "type": "string" }
-      },
-      "required": ["announcement"]
+      "required": ["id", "name", "message", "date"]
     }
   },
   "firestore": {
     "/members/{memberId}": {
-      "schema": "Member",
-      "description": "Collection of community member registrations"
+      "schema": { "$ref": "Member" },
+      "description": "Welfare system registry of members"
     },
     "/reports/{reportId}": {
-      "schema": "EmergencyReport",
-      "description": "Welfare assistance tracking events"
+      "schema": { "$ref": "EmergencyReport" },
+      "description": "Live status incidents dispatched"
     },
     "/donations/{donationId}": {
-      "schema": "Donation",
-      "description": "Registry fund submissions"
-    },
-    "/news/{newsId}": {
-      "schema": "NewsItem",
-      "description": "News board timeline items"
+      "schema": { "$ref": "Donation" },
+      "description": "Audited donation ledger transactions"
     },
     "/elections/{electionId}": {
-      "schema": "Election",
-      "description": "Active election council voting details"
+      "schema": { "$ref": "Election" },
+      "description": "Cabinets executive polls"
     },
-    "/ads/{adId}": {
-      "schema": "Advertisement",
-      "description": "Commercial verified billboard items"
+    "/news/{newsId}": {
+      "schema": { "$ref": "NewsItem" },
+      "description": "Direct reports and bulletin panels"
     },
-    "/contact_msgs/{msgId}": {
-      "schema": "ContactMsg",
-      "description": "Admin helpdesk queries"
+    "/advertisements/{adId}": {
+      "schema": { "$ref": "Advertisement" },
+      "description": "Sponsored banner bills"
     },
-    "/settings/{settingId}": {
-      "schema": "AppSetting",
-      "description": "Global layout announcements or administrative variables"
+    "/contactMessages/{msgId}": {
+      "schema": { "$ref": "ContactMessage" },
+      "description": "Contact panel entries"
     }
   }
 }

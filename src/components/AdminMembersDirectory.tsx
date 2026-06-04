@@ -1,545 +1,362 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Users, 
-  Search, 
-  MapPin, 
-  ShieldCheck, 
-  ShieldAlert,
-  SlidersHorizontal, 
-  PhoneCall, 
-  Trash2, 
-  Eye, 
-  Activity, 
-  CheckCircle2, 
-  X,
-  PlusCircle,
-  Clock,
-  Building,
-  CreditCard
-} from 'lucide-react';
-import { Member } from '../types';
-import { DigitalMemberId } from './DigitalMemberId';
+import { Search, CheckCircle2, UserCheck, CreditCard, ShieldAlert, FileCheck, Award } from 'lucide-react';
+import { Member, Donation, Language } from '../types';
+import { t } from '../i18n';
 
 interface AdminMembersDirectoryProps {
   members: Member[];
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
-  onDeleteMember?: (id: string) => void; // Support direct deletion
-  language?: 'en' | 'ur' | 'ps';
+  donations: Donation[];
+  activeRole: 'guest' | 'member' | 'admin';
+  language: Language;
+  onApproveMember: (id: string) => void;
+  onRejectMember: (id: string) => void;
+  onApproveDonation: (id: string) => void;
+  onRejectDonation: (id: string) => void;
+  onDeleteMember: (id: string) => void;
 }
 
 export const AdminMembersDirectory: React.FC<AdminMembersDirectoryProps> = ({
   members,
-  onApprove,
-  onReject,
-  onDeleteMember,
-  language = 'en'
+  donations,
+  activeRole,
+  language,
+  onApproveMember,
+  onRejectMember,
+  onApproveDonation,
+  onRejectDonation,
+  onDeleteMember
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
-  const [cityFilter, setCityFilter] = useState<string>('all');
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  // Card Lookup Search
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [searchedRecord, setSearchedRecord] = useState<Member | null | undefined>(null);
 
-  // Internationalization labels dictionary
-  const t = (en: string, ur: string, ps: string) => {
-    if (language === 'ur') return ur;
-    if (language === 'ps') return ps;
-    return en;
+  // General Table Search
+  const [directorySearch, setDirectorySearch] = useState('');
+
+  // Handle Card verification lookup
+  const handleLookup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupQuery.trim()) {
+      setSearchedRecord(null);
+      return;
+    }
+    const cleanQuery = lookupQuery.trim().toLowerCase();
+    const found = members.find(
+      m => m.omaniId.toLowerCase() === cleanQuery || m.passportNo.toLowerCase() === cleanQuery
+    );
+    setSearchedRecord(found || undefined); // undefined represents not found
   };
 
-  // Extract unique cities present in all records
-  const availableCities = useMemo(() => {
-    const citiesSet = new Set<string>();
-    members.forEach(m => {
-      if (m.city) {
-        const cleaned = m.city.trim();
-        if (cleaned) {
-          citiesSet.add(cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase());
-        }
-      }
-    });
-    return Array.from(citiesSet).sort();
-  }, [members]);
-
-  // Compute metrics counters
-  const metrics = useMemo(() => {
-    return {
-      total: members.length,
-      approved: members.filter(m => m.status === 'approved').length,
-      pending: members.filter(m => m.status === 'pending').length,
-      rejected: members.filter(m => m.status === 'rejected').length,
-    };
-  }, [members]);
-
-  // Serialized member ID formatter
-  const formatMemberId = (m: Member) => {
-    const code = m.id.replace('user-', '');
-    const cityInitial = m.city ? m.city.substring(0, 3).toUpperCase() : 'OM';
-    const joinYear = m.joinedDate ? m.joinedDate.split('-')[0] : '2026';
-    return `OPC-${joinYear}-${code.padStart(4, '0')}-${cityInitial}`;
-  };
-
-  // Perform multi-criteria search and filter operations
-  const filteredMembers = useMemo(() => {
-    return members.filter(m => {
-      // 1. Status Filter matching
-      if (statusFilter !== 'all' && m.status !== statusFilter) {
-        return false;
-      }
-
-      // 2. City Filter matching
-      if (cityFilter !== 'all') {
-        const mCityRaw = m.city ? m.city.trim().toLowerCase() : '';
-        if (mCityRaw !== cityFilter.toLowerCase()) {
-          return false;
-        }
-      }
-
-      // 3. Text query matching
-      const query = searchQuery.trim().toLowerCase();
-      if (!query) return true;
-
-      const serializedId = formatMemberId(m).toLowerCase();
-      const name = m.name?.toLowerCase() || '';
-      const email = m.email?.toLowerCase() || '';
-      const phone = m.phone || '';
-      const district = m.district?.toLowerCase() || '';
-      const city = m.city?.toLowerCase() || '';
-      const employer = m.employer?.toLowerCase() || '';
-
-      return (
-        name.includes(query) ||
-        email.includes(query) ||
-        phone.includes(query) ||
-        district.includes(query) ||
-        city.includes(query) ||
-        employer.includes(query) ||
-        serializedId.includes(query)
-      );
-    });
-  }, [members, searchQuery, statusFilter, cityFilter]);
+  // Filtered members for directory view
+  const filteredMembersList = useMemo(() => {
+    const q = directorySearch.toLowerCase().trim();
+    if (!q) return members;
+    return members.filter(
+      m => m.fullName.toLowerCase().includes(q) || 
+           m.passportNo.toLowerCase().includes(q) ||
+           m.omaniId.toLowerCase().includes(q) ||
+           m.profession.toLowerCase().includes(q)
+    );
+  }, [members, directorySearch]);
 
   return (
-    <div id="admin_members_directory_root" className="bg-white rounded-2xl border border-gray-250 p-6 md:p-8 shadow-xs space-y-6 text-left">
+    <div id="comp-admin-directory" className="space-y-8">
       
-      {/* SECTION HEADER & QUICK METRICS CORES */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 border-b border-gray-100 pb-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="p-2 bg-amber-50 rounded-xl border border-amber-200">
-              <Users className="w-5 h-5 text-amber-600 shrink-0" />
-            </span>
-            <h3 className="text-base sm:text-lg font-black text-gray-900 font-display uppercase tracking-tight">
-              {t('Verified Members Registry & Cards', 'تصدیق شدہ برادری رجسٹر اور شناختی کارڈز', 'د تصدیق شوي غړو ډیټابیس او کارتونه')}
-            </h3>
-          </div>
-          <p className="text-xs text-gray-550 leading-relaxed max-w-2xl font-sans">
-            {t('Administrative live list of all approved expat memberships, pending applications, and rejected records. Tap "View Membership Card" to flip cards in 3D, check cryptographic signatures, or launch the desktop printer interface.',
-              'تمام فعال، معطل، اور زیر التواء اراکین کی فہرست۔ ہولوگرافک شناختی کارڈ کو 3D میں دیکھنے، پرنٹ کرنے، یا این ایف سی برانڈ ڈیٹا حاصل کرنے کے لیے کلک کریں۔',
-              'د ټولو فعالو غړو رسمي مالي او باثباته لړلیک دلته کتلای او تائیدولای شئ.')}
+      {/* 1. Digital Member Card Lookup section */}
+      <div className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="max-w-xl">
+          <h3 className="text-xl font-display font-bold text-slate-150 flex items-center gap-2">
+            <CreditCard className="text-amber-400 w-5 h-5" />
+            {t(language, 'memberPortalTitle')} <span className="text-slate-400 font-sans font-normal text-xs">{t(language, 'memberPortalUrdu')}</span>
+          </h3>
+          <p className="text-slate-350 text-sm mt-1">
+            Query your Omani Civil ID or Pakistani Passport number below to pull your active welfare validation card.
           </p>
+          
+          <form onSubmit={handleLookup} className="mt-4 flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-slate-400" />
+              <input 
+                type="text"
+                placeholder={t(language, 'memberLookupPlaceholder')}
+                value={lookupQuery}
+                onChange={(e) => setLookupQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-950 border-2 border-slate-850 hover:border-slate-700 focus:border-amber-400/80 rounded-lg text-slate-100 placeholder-slate-410 font-sans outline-none font-medium transition duration-200"
+              />
+            </div>
+            <button 
+              type="submit"
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-sans font-bold px-5 py-2 rounded-lg transition duration-200 cursor-pointer text-sm shadow-md"
+            >
+              {t(language, 'lookupBtn')}
+            </button>
+          </form>
         </div>
 
-        {/* Dynamic Metric counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0 font-sans">
-          <div className="bg-slate-50 border border-gray-200 rounded-xl p-3 text-center space-y-0.5">
-            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">{t('Registered', 'کل تعداد', 'ټول غړي')}</span>
-            <span className="text-sm font-black text-slate-800">{metrics.total}</span>
+        {/* Search Results Visual Segment */}
+        {searchedRecord === undefined && (
+          <div className="mt-6 p-4 bg-red-950/20 border border-red-500/40 rounded-xl text-red-300 text-sm">
+            ❌ {t(language, 'noMemberFound')}
           </div>
+        )}
 
-          <div className="bg-emerald-50 border border-emerald-150 rounded-xl p-3 text-center space-y-0.5">
-            <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider block">{t('Approved', 'فعال کارڈز', 'فعال کارتونه')}</span>
-            <span className="text-sm font-black text-emerald-800">{metrics.approved}</span>
-          </div>
+        {searchedRecord && (
+          <div className="mt-6 max-w-lg mx-auto bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border-2 border-amber-400 rounded-2xl p-6 shadow-2xl relative overflow-hidden transition-all duration-300 scale-100 hover:scale-[1.01]">
+            {/* Background Emblem watermark */}
+            <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-amber-400/5 rounded-full pointer-events-none border border-amber-400/5 flex items-center justify-center font-display font-extrabold text-7xl text-amber-400/10">
+              OPC
+            </div>
 
-          <div className="bg-amber-50 border border-amber-150 rounded-xl p-3 text-center space-y-0.5 animate-pulse">
-            <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider block">{t('Pending Docs', 'زیر التوا', 'نا تایید شوي')}</span>
-            <span className="text-sm font-black text-amber-800">{metrics.pending}</span>
-          </div>
+            {/* Premium Gold Accent Card Header */}
+            <div className="flex justify-between items-start gap-3 border-b border-amber-400/30 pb-4">
+              <div>
+                <h4 className="text-amber-400 font-display font-bold text-base tracking-wide uppercase">OMAN PAKHTOON WELFARE</h4>
+                <p className="text-emerald-400 text-[10px] uppercase font-mono tracking-widest font-bold flex items-center gap-1 mt-0.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  {t(language, 'statusApproved')}
+                </p>
+              </div>
+              <div className="bg-amber-400/10 border border-amber-400/45 px-2.5 py-1 rounded text-[10px] font-mono font-bold text-amber-390">
+                NO: {searchedRecord.id.toUpperCase()}
+              </div>
+            </div>
 
-          <div className="bg-red-50 border border-red-150 rounded-xl p-3 text-center space-y-0.5">
-            <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider block">{t('Flagged / Refused', 'مسترد شدہ', 'مسترد شوي')}</span>
-            <span className="text-sm font-black text-red-800">{metrics.rejected}</span>
+            {/* Card Content grid */}
+            <div className="mt-4 grid grid-cols-2 gap-y-3.5 gap-x-6">
+              <div>
+                <p className="text-slate-400 text-[10px] uppercase font-mono tracking-wider font-bold">{t(language, 'inputFullName')}</p>
+                <p className="text-slate-100 font-sans font-extrabold text-sm tracking-wide">{searchedRecord.fullName.toUpperCase()}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-[10px] uppercase font-mono tracking-wider font-bold">{t(language, 'cardProfession')}</p>
+                <p className="text-amber-300 font-sans font-bold text-sm">{searchedRecord.profession}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-[10px] uppercase font-mono tracking-wider font-bold">{t(language, 'cardOmaniId')}</p>
+                <p className="text-slate-100 font-mono font-extrabold text-sm tracking-widest">{searchedRecord.omaniId}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-[10px] uppercase font-mono tracking-wider font-bold">{t(language, 'cardPassport')}</p>
+                <p className="text-slate-100 font-mono font-extrabold text-sm tracking-wider">{searchedRecord.passportNo}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-[10px] uppercase font-mono tracking-wider font-bold">{t(language, 'cardDuration')}</p>
+                <p className="text-slate-100 font-sans text-xs">{searchedRecord.durationOfOmanStay}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-[10px] uppercase font-mono tracking-wider font-bold">{t(language, 'cardWelfareEligible')}</p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <Award className="w-4 h-4 text-emerald-400" />
+                  <span className="text-emerald-400 font-bold text-xs">{t(language, 'yes')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom digital sign block */}
+            <div className="mt-6 pt-4 border-t border-slate-900 flex justify-between items-center bg-slate-950/40 -mx-6 -mb-6 px-6 py-3">
+              <div className="flex gap-2.5 items-center">
+                <FileCheck className="w-5 h-5 text-emerald-400" />
+                <span className="text-slate-350 font-mono text-[9px] uppercase leading-tight">LEDGER STAMP VERIFIED<br/>Oman Elders Registry</span>
+              </div>
+              {/* Simulated barcode */}
+              <div className="flex flex-col items-end">
+                <div className="h-4 w-28 bg-current text-slate-200 opacity-25 flex gap-0.5 pointer-events-none">
+                  {[...Array(24)].map((_, i) => (
+                    <span key={i} className="h-full bg-slate-250 inline-block" style={{ width: `${(i % 3 === 0 ? 3 : 1)}px` }}></span>
+                  ))}
+                </div>
+                <span className="text-[8px] font-mono text-slate-400 mt-0.5">SW-OPC-SEC-{searchedRecord.id.toUpperCase()}</span>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* FILTER CONTROLS TOOLBAR */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 font-sans">
-        {/* Search Input Box */}
-        <div className="flex-1 max-w-md relative">
-          <Search className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
-          <input 
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('Search by ID, Name, Phone, District, City, Sponsor...', 'آئی ڈی، نام، فون، ضلع یا کفیل کے ذریعے تلاش کریں...', 'د نوم، ټلیفون، یا شناخت لخوا لټون...')}
-            className="w-full text-xs md:text-sm pl-9.5 pr-4 py-2 rounded-xl border border-gray-300 focus:outline-emerald-650 bg-white shadow-3xs text-gray-800 placeholder-gray-400 font-medium"
-          />
-        </div>
-
-        {/* Toolbar Action dropdowns & switch filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Status Tab selectors */}
-          <div className="inline-flex rounded-lg border border-gray-300 bg-white p-0.5 text-xs shadow-3xs overflow-hidden">
-            <button
-              onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1.5 rounded-md font-extrabold transition-all cursor-pointer ${statusFilter === 'all' ? 'bg-slate-900 text-white' : 'text-gray-500 hover:text-slate-800'}`}
-            >
-              All Users
-            </button>
-            <button
-              onClick={() => setStatusFilter('approved')}
-              className={`px-3 py-1.5 rounded-md font-extrabold transition-all cursor-pointer ${statusFilter === 'approved' ? 'bg-emerald-700 text-white' : 'text-emerald-700 hover:bg-emerald-50'}`}
-            >
-              Approved (فعال)
-            </button>
-            <button
-              onClick={() => setStatusFilter('pending')}
-              className={`px-3 py-1.5 rounded-md font-extrabold transition-all cursor-pointer ${statusFilter === 'pending' ? 'bg-amber-600 text-white' : 'text-amber-700 hover:bg-amber-50'}`}
-            >
-              Pending (زیر تائید)
-            </button>
-            <button
-              onClick={() => setStatusFilter('rejected')}
-              className={`px-3 py-1.5 rounded-md font-extrabold transition-all cursor-pointer ${statusFilter === 'rejected' ? 'bg-red-650 text-white' : 'text-red-650 hover:bg-red-50'}`}
-            >
-              Rejected
-            </button>
+      {/* 2. Global Registry Directory table */}
+      <div className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-display font-bold text-slate-105">OPC Welfare Registry Directory</h3>
+            <p className="text-slate-300 text-xs mt-0.5">Complete record of registered Pakhtoon laborers under Muscat Cabinet protection.</p>
           </div>
-
-          {/* City filtration dropdown selector */}
-          <select
-            value={cityFilter}
-            onChange={(e) => setCityFilter(e.target.value)}
-            className="text-xs px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-offset-1 focus:outline-emerald-600 font-bold text-gray-700 shadow-3xs"
-          >
-            <option value="all">📍 All Oman Cities ({availableCities.length})</option>
-            {availableCities.map(city => (
-              <option key={city} value={city}>{city}</option>
-            ))}
-          </select>
+          {/* Internal search inside directory */}
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
+            <input 
+              type="text"
+              placeholder={t(language, 'searchLabel') + '...'}
+              value={directorySearch}
+              onChange={(e) => setDirectorySearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-slate-200 text-xs font-sans outline-none focus:border-amber-400"
+            />
+          </div>
         </div>
-      </div>
 
-      {/* VERIFIED MEMBERS TABLE & EXPANDED TILES LIST */}
-      <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-3xs bg-white">
-        
-        {/* Table View Layout - Desktop/Large screens */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full text-left border-collapse font-sans text-xs">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr className="text-gray-400 font-black uppercase tracking-wider text-[10px]">
-                <th className="py-3 px-4 w-12 text-center">Face</th>
-                <th className="py-3 px-4">Member ID & Full Name</th>
-                <th className="py-3 px-4">Oman City / PK District</th>
-                <th className="py-3 px-4">Sponsor/Employer</th>
-                <th className="py-3 px-4 text-center">Blood</th>
-                <th className="py-3 px-4">Validation Status</th>
-                <th className="py-3 px-4">Registered Date</th>
-                <th className="py-3 px-4 text-right">Interactive Actions</th>
+        {/* Card Registry Grid List (Responsive grid/table) */}
+        <div className="mt-6 overflow-x-auto border border-slate-800 rounded-xl">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-950 text-slate-400 font-mono text-[10px] uppercase tracking-wider border-b border-slate-800">
+                <th className="py-3 px-4">Full Legal Name</th>
+                <th className="py-3 px-4">Profession / Stay</th>
+                <th className="py-3 px-4">Civil Passport Records</th>
+                <th className="py-3 px-4">Registration Date</th>
+                <th className="py-3 px-4">Status</th>
+                {activeRole === 'admin' && <th className="py-3 px-4 text-right">Admin Actions</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-150">
-              {filteredMembers.map(member => {
-                const isApproved = member.status === 'approved';
-                const isPending = member.status === 'pending';
-                const isRejected = member.status === 'rejected';
-
-                return (
-                  <tr key={member.id} className="hover:bg-slate-50/50 transition">
-                    {/* User Avatar */}
-                    <td className="py-3.5 px-4 text-center">
-                      <img 
-                        src={member.photoUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150&h=150"} 
-                        alt={member.name} 
-                        className="w-9 h-9 object-cover rounded-full border border-gray-200 shadow-inner inline-block"
-                      />
-                    </td>
-
-                    {/* Member ID & Name */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-extrabold text-gray-900 leading-snug flex items-center gap-1.5">
-                        {member.name} 
-                        {isApproved && <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full inline-block" />}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="font-mono text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border font-bold">
-                          {formatMemberId(member)}
-                        </span>
-                        <span className="text-[10px] text-gray-400 truncate">{member.email}</span>
-                      </div>
-                    </td>
-
-                    {/* Oman Location / PK District */}
-                    <td className="py-3.5 px-4.5">
-                      <div className="font-bold text-gray-800 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                        <span>{member.city || 'Muscat'}</span>
-                      </div>
-                      <span className="text-[10px] text-gray-400 block ml-4.5">Hometown: <strong>{member.district || 'Swat'}</strong></span>
-                    </td>
-
-                    {/* Employer details */}
-                    <td className="py-3.5 px-4 max-w-[150px] truncate" title={member.employer}>
-                      <span className="font-medium text-gray-650 flex items-center gap-1">
-                        <Building className="w-3.5 h-3.5 text-gray-450 shrink-0" />
-                        {member.employer || 'Al Ansar Construction'}
-                      </span>
-                      <span className="text-[10px] text-slate-400 block ml-4.5">Contact: {member.phone}</span>
-                    </td>
-
-                    {/* Blood Group */}
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 text-[#f43f5e] font-black bg-rose-50 border border-rose-150 rounded text-[11px] font-mono">
-                        🩸 {member.bloodGroup || 'O+'}
-                      </span>
-                    </td>
-
-                    {/* Status badges */}
-                    <td className="py-3.5 px-4">
-                      {isApproved && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-150/60">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                          Authorized
-                        </span>
-                      )}
-                      {isPending && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-amber-800 bg-amber-50 px-2 py-1 rounded-md border border-amber-200/50 animate-pulse">
-                          <Clock className="w-3.5 h-3.5 text-amber-600" />
-                          Pending Verify
-                        </span>
-                      )}
-                      {isRejected && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-red-700 bg-red-50 px-2 py-1 rounded-md border border-red-200/50">
-                          <ShieldAlert className="w-3.5 h-3.5 text-red-650" />
-                          Suspended
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Audited Registry Date */}
-                    <td className="py-3.5 px-4 text-gray-500 font-mono text-[10px]">
-                      {member.joinedDate || '2026-03-12'}
-                    </td>
-
-                    {/* Actions button series */}
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5 flex-nowrap font-sans">
-                        
-                        <button
-                          type="button"
-                          onClick={() => setSelectedMember(member)}
-                          className="cursor-pointer bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 border border-emerald-600 hover:border-emerald-750 shadow-3xs"
-                        >
-                          <CreditCard className="w-3.5 h-3.5" />
-                          <span>Show Badge (کارڈ)</span>
-                        </button>
-
-                        <div className="h-5 w-px bg-gray-200 mx-1"></div>
-
-                        {/* Approval transition controls on administrative list */}
-                        {isPending && (
-                          <button
-                            type="button"
-                            onClick={() => onApprove(member.id)}
-                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2.5 py-1.5 rounded-lg border border-emerald-200 transition cursor-pointer"
-                            title="Approve immediately"
+            <tbody className="divide-y divide-slate-800 font-sans text-xs">
+              {filteredMembersList.map((member) => (
+                <tr key={member.id} className="hover:bg-slate-950/50 transition duration-150">
+                  <td className="py-3.5 px-4">
+                    <p className="text-slate-100 font-bold">{member.fullName}</p>
+                    <p className="text-slate-350 text-[10px]" style={{ color: '#94a3b8' }}>WhatsApp: {member.phone}</p>
+                  </td>
+                  <td className="py-3.5 px-4 text-slate-200">
+                    <p className="font-medium text-amber-500/90">{member.profession}</p>
+                    <p className="text-[10px] text-slate-350" style={{ color: '#94a3b8' }}>Oman Length: {member.durationOfOmanStay}</p>
+                  </td>
+                  <td className="py-3.5 px-4 font-mono text-slate-250">
+                    <p className="flex items-center gap-1 text-[11px]">
+                      <span className="text-slate-400 font-sans text-[9px] uppercase">O-ID:</span> {member.omaniId}
+                    </p>
+                    <p className="flex items-center gap-1 text-[11px]">
+                      <span className="text-slate-400 font-sans text-[9px] uppercase">Pass:</span> {member.passportNo}
+                    </p>
+                  </td>
+                  <td className="py-3.5 px-4 text-slate-350 font-mono text-[10px]">
+                    {member.registrationDate}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    {member.status === 'approved' && (
+                      <span className="bg-emerald-950/50 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold">Approved Active</span>
+                    )}
+                    {member.status === 'pending' && (
+                      <span className="bg-amber-950/50 text-amber-500 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-bold">Pending Review</span>
+                    )}
+                    {member.status === 'rejected' && (
+                      <span className="bg-red-950/50 text-red-500 border border-red-500/30 px-2 py-0.5 rounded text-[10px] font-bold">Flagged</span>
+                    )}
+                  </td>
+                  {activeRole === 'admin' && (
+                    <td className="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+                      {member.status === 'pending' && (
+                        <>
+                          <button 
+                            onClick={() => onApproveMember(member.id)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition duration-150 inline-flex items-center gap-0.5"
                           >
                             Approve
                           </button>
-                        )}
-                        
-                        {isApproved && (
-                          <button
-                            type="button"
-                            onClick={() => onReject(member.id)}
-                            className="bg-red-50 hover:bg-red-100 text-red-700 font-bold text-[10px] px-2 py-1.5 rounded-lg border border-red-150 transition cursor-pointer"
-                            title="Flag / Suspend Card validation"
+                          <button 
+                            onClick={() => onRejectMember(member.id)}
+                            className="bg-red-600 hover:bg-red-500 text-slate-950 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition duration-150 inline-flex items-center gap-0.5"
                           >
-                            Suspend
+                            Flag
                           </button>
-                        )}
-
-                        {isRejected && (
-                          <button
-                            type="button"
-                            onClick={() => onApprove(member.id)}
-                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2.5 py-1.5 rounded-lg border border-emerald-200 transition cursor-pointer"
-                            title="Restore card permissions"
-                          >
-                            Restore
-                          </button>
-                        )}
-
-                        {onDeleteMember && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (window.confirm(`Are you absolutely sure you want to delete ${member.name}'s complete record? This is irreversible.`)) {
-                                onDeleteMember(member.id);
-                              }
-                            }}
-                            className="text-gray-400 hover:text-red-650 p-1.5 hover:bg-red-50 rounded-lg transition"
-                            title="Permanently Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-
-                      </div>
+                        </>
+                      )}
+                      <button 
+                        onClick={() => onDeleteMember(member.id)}
+                        className="bg-slate-800 hover:bg-red-650 text-red-400 hover:text-slate-950 text-[10px] px-2 py-1 rounded border border-slate-700 hover:border-red-600 cursor-pointer transition duration-150"
+                      >
+                        Delete
+                      </button>
                     </td>
-                  </tr>
-                );
-              })}
-              {filteredMembers.length === 0 && (
+                  )}
+                </tr>
+              ))}
+              {filteredMembersList.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-xs text-gray-400 font-sans italic">
-                    {t('No registered members found matching application filters.', 'اس سرچ اور فلٹر کے مطابق کوئی ممبر ریکارڈ نہیں ملا۔', 'هیڅ غړی ونه موندل شو.')}
-                  </td>
+                  <td colSpan={6} className="text-center py-8 text-slate-350 font-sans">No matching records found in Oman database directory.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-
-        {/* Dense Stacked Tile Cards view on Mobile/Mobile devices (up to lg layout) */}
-        <div className="block lg:hidden divide-y divide-gray-150 font-sans">
-          {filteredMembers.map(member => {
-            const isApproved = member.status === 'approved';
-            const isPending = member.status === 'pending';
-            const isRejected = member.status === 'rejected';
-
-            return (
-              <div key={member.id} className="p-4 hover:bg-slate-50 transition space-y-3.5">
-                <div id={`m_card_tile_${member.id}`} className="flex items-start gap-3">
-                  <img 
-                    src={member.photoUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150&h=150"} 
-                    alt={member.name} 
-                    className="w-10 h-10 object-cover rounded-full border border-gray-200"
-                  />
-                  
-                  <div className="flex-1 space-y-0.5 text-left">
-                    <h4 className="text-xs font-black text-gray-900 flex items-center gap-1.5">
-                      {member.name}
-                      <span className="font-mono text-[9px] text-gray-450">({formatMemberId(member)})</span>
-                    </h4>
-                    <p className="text-[11px] text-gray-400">{member.email || 'No email provided'}</p>
-                    
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {isApproved && (
-                        <span className="inline-flex items-center text-[9px] font-black text-emerald-800 bg-emerald-50 border border-emerald-150 rounded px-1.5 py-0.5">
-                          Approved
-                        </span>
-                      )}
-                      {isPending && (
-                        <span className="inline-flex items-center text-[9px] font-black text-amber-800 bg-amber-50 border border-amber-150 rounded px-1.5 py-0.5">
-                          Pending Verification
-                        </span>
-                      )}
-                      {isRejected && (
-                        <span className="inline-flex items-center text-[9px] font-black text-red-700 bg-red-50 border border-red-150 rounded px-1.5 py-0.5">
-                          Suspended
-                        </span>
-                      )}
-                      <span className="inline-flex items-center text-[9px] font-black text-[#f43f5e] bg-rose-50 border border-rose-150 rounded px-1.5 py-0.5">
-                        🩸 {member.bloodGroup || 'O+'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sub details line */}
-                <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-50 p-2.5 rounded-lg border border-gray-200 font-medium">
-                  <div>City in Oman: <strong className="text-slate-800">{member.city || 'Muscat'}</strong></div>
-                  <div>PK District: <strong className="text-slate-800">{member.district || 'Swat'}</strong></div>
-                  <div className="col-span-2">Employer: <strong className="text-slate-750">{member.employer || 'Al-Khonji Group'}</strong></div>
-                  <div>Phone: <strong className="text-slate-750">{member.phone}</strong></div>
-                  <div>Joined: <strong className="text-slate-450">{member.joinedDate}</strong></div>
-                </div>
-
-                {/* Action trigger buttons */}
-                <div className="flex items-center gap-2 pt-1 font-sans justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMember(member)}
-                    className="cursor-pointer bg-emerald-700 text-white font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg shadow-3xs flex items-center gap-1"
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    <span>View Badge Card</span>
-                  </button>
-
-                  <div className="flex items-center gap-1.5 ml-auto">
-                    {isPending && (
-                      <button 
-                        onMouseDown={() => onApprove(member.id)}
-                        className="bg-emerald-50 text-emerald-800 border border-emerald-250 font-bold text-[9px] px-2.5 py-1.5 rounded-lg"
-                      >
-                        Approve
-                      </button>
-                    )}
-                    {isApproved && (
-                      <button 
-                        onMouseDown={() => onReject(member.id)}
-                        className="bg-red-50 text-red-600 border border-red-200 font-bold text-[9px] px-2 py-1.5 rounded-lg"
-                      >
-                        Suspend
-                      </button>
-                    )}
-                    {isRejected && (
-                      <button 
-                        onMouseDown={() => onApprove(member.id)}
-                        className="bg-emerald-50 text-emerald-800 border border-emerald-250 font-bold text-[9px] px-2 py-1.5 rounded-lg"
-                      >
-                        Approve
-                      </button>
-                    )}
-                    {onDeleteMember && (
-                      <button
-                        onMouseDown={() => {
-                          if (window.confirm(`Delete ${member.name}?`)) onDeleteMember(member.id);
-                        }}
-                        className="p-1 text-gray-400 bg-white border rounded"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {filteredMembers.length === 0 && (
-            <div className="py-12 text-center text-xs text-gray-400 font-semibold font-sans italic">
-              {t('No registered members found matching application filters.', 'اس سرچ اور فلٹر کے مطابق کوئی ممبر ریکارڈ نہیں ملا۔', 'هیڅ غړی ونه موندل شو.')}
-            </div>
-          )}
-        </div>
-
       </div>
 
-      {/* 🔮 BEAUTIFUL OVERLAY MODAL: DIGITAL MEMBERSHIP CARD VIEWER */}
-      {selectedMember && (
-        <div id="digital_badge_overlay_modal" className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl border border-gray-150 shadow-2xl max-w-4xl w-full p-4 md:p-6 relative overflow-y-auto max-h-[95vh] focus:outline-none zoom-in-95">
-            {/* Modal close icon banner */}
-            <button
-              onClick={() => setSelectedMember(null)}
-              className="absolute top-4 right-4 z-50 p-1.5 text-gray-450 hover:text-rose-600 bg-gray-100 hover:bg-rose-50 rounded-full border border-gray-200 hover:border-rose-150 cursor-pointer shadow-3xs transition"
-              title="Close modal window"
-            >
-              <X className="w-5 h-5 shrink-0" />
-            </button>
-
-            {/* Render full flippable & print-ready Digital ID Card directly inside admin panel */}
-            <div className="mt-4">
-              <DigitalMemberId 
-                member={selectedMember} 
-                onClose={() => setSelectedMember(null)}
-                showLookupFeature={false}
-                allApprovedMembers={members}
-              />
+      {/* 3. Simulated Admin Control center (Database audits) */}
+      {activeRole === 'admin' && (
+        <div className="bg-slate-900 border-2 border-red-500/40 rounded-2xl p-6 shadow-xl space-y-6">
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <ShieldAlert className="text-red-500 w-6 h-6 animate-bounce" />
+            <div>
+              <h3 className="text-lg font-display font-bold text-red-400 capitalize">{t(language, 'adminBoardTitle')}</h3>
+              <p className="text-xs text-slate-300">Special administrative tools enabled for user email: <span className="text-slate-200 underline font-mono">abuhamdan144@gmail.com</span></p>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Sec A: Approve member registrations */}
+            <div className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <h4 className="text-sm font-mono uppercase tracking-wider text-slate-100 flex items-center gap-1.5 font-bold">
+                <UserCheck className="w-4 h-4 text-indigo-400" /> Pending Registrations ({members.filter(m => m.status === 'pending').length})
+              </h4>
+              <div className="space-y-2 mt-2 max-h-60 overflow-y-auto pr-1">
+                {members.filter(m => m.status === 'pending').map((m) => (
+                  <div key={m.id} className="bg-slate-900 p-3 rounded border border-slate-800 flex justify-between items-center gap-4">
+                    <div>
+                      <p className="text-slate-100 font-bold text-xs">{m.fullName}</p>
+                      <p className="text-[10px] text-slate-300">{m.profession} / ID: {m.omaniId}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => onApproveMember(m.id)}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[10px] px-2.5 py-1 rounded cursor-pointer transition"
+                      >
+                        Approve
+                      </button>
+                      <button 
+                        onClick={() => onRejectMember(m.id)}
+                        className="bg-slate-800 hover:bg-red-500 hover:text-slate-950 text-slate-200 font-bold text-[10px] px-2.5 py-1 rounded border border-slate-700 hover:border-red-500 cursor-pointer transition"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {members.filter(m => m.status === 'pending').length === 0 && (
+                  <p className="text-slate-350 text-[11px] text-center py-6">All registration forms fully processed.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Sec B: Audit donation ledger slips */}
+            <div className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <h4 className="text-sm font-mono uppercase tracking-wider text-slate-100 flex items-center gap-1.5 font-bold">
+                <CheckCircle2 className="w-4 h-4 text-amber-400" /> Audit Cash Contributions ({donations.filter(d => d.status === 'pending').length})
+              </h4>
+              <div className="space-y-2 mt-2 max-h-60 overflow-y-auto pr-1">
+                {donations.filter(d => d.status === 'pending').map((d) => (
+                  <div key={d.id} className="bg-slate-900 p-3 rounded border border-slate-800 flex justify-between items-center gap-4">
+                    <div>
+                      <p className="text-slate-100 font-bold text-xs">{d.donorName}</p>
+                      <p className="text-[10px] text-amber-400 font-mono font-bold">{d.amount.toFixed(3)} OMR • Ref: {d.transactionId}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => onApproveDonation(d.id)}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[10px] px-2.5 py-1 rounded cursor-pointer transition"
+                      >
+                        Verify Cash
+                      </button>
+                      <button 
+                        onClick={() => onRejectDonation(d.id)}
+                        className="bg-slate-800 hover:bg-red-500 hover:text-slate-950 text-slate-200 font-bold text-[10px] px-2.5 py-1 rounded border border-slate-700 hover:border-red-500 cursor-pointer transition"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {donations.filter(d => d.status === 'pending').length === 0 && (
+                  <p className="text-slate-350 text-[11px] text-center py-6">All transaction receipts fully audited.</p>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}

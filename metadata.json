@@ -1,6 +1,8 @@
 {
-  "name": "Oman Pakhtoon Community",
-  "description": "A welfare and social connection platform supporting the Pakhtoon diaspora in Oman with transparent community funds, consular assistance embassy access, emergency case dispatch, and online elections.",
+  "name": "Oman Pakhtoon Community Welfare Portal",
+  "description": "Digital Welfare Membership Card, Emergency Welfare Assistance, and Audited Donation Ledger Portal for Omani Pakhtoon labor community.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

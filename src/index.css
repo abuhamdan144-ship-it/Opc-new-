@@ -1,111 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
-  --font-urdu: "Noto Nastaliq Urdu", "Inter", sans-serif;
-
-  /* Luxury deep midnight blue mapping to Emerald keys */
-  --color-emerald-50: #0a122e;
-  --color-emerald-100: #101c40;
-  --color-emerald-200: #162657;
-  --color-emerald-300: #1e3371;
-  --color-emerald-400: #26408a;
-  --color-emerald-500: #345ebd;
-  --color-emerald-600: #294fa3;
-  --color-emerald-700: #1c387c; /* Classic deep noble blue */
-  --color-emerald-800: #11255e;
-  --color-emerald-900: #0a173d;
-  --color-emerald-950: #050b1f; /* core deep black navy */
-
-  /* Clay & Yellow standard mapping to Pure Gold Metallic Accents */
-  --color-yellow-50: #fffefa;
-  --color-yellow-105: #fef8dd;
-  --color-yellow-200: #fdf0ad;
-  --color-yellow-300: #fbdc6d;
-  --color-yellow-400: #ffd700; /* Brilliant Gold */
-  --color-yellow-500: #d4a337; /* Burnished Gold */
-  --color-yellow-600: #b58529;
-  --color-yellow-700: #8c631c;
-  --color-yellow-800: #664714;
-  --color-yellow-950: #332007;
-
-  /* Body background & high-contrast text mapping to Gray */
-  --color-gray-50: #050814;    /* Ultra Deep Dark Space */
-  --color-gray-100: #0a1128;   /* Default Card Base (Glass Background) */
-  --color-gray-200: #162447;   /* Borders standard */
-  --color-gray-300: #24355f;
-  --color-gray-400: #475569;   /* Slate Muted */
-  --color-gray-500: #94a3b8;   /* Muted readable gray */
-  --color-gray-600: #cbd5e1;
-  --color-gray-750: #e2e8f0;
-  --color-gray-800: #f1f5f9;   /* Light stone soft */
-  --color-gray-900: #ffffff;   /* Pure White */
-
-  /* Shadow overlays for Gold theme */
-  --shadow-xs: 0 1px 3px 0 rgba(255, 215, 0, 0.05);
-  --shadow-md: 0 4px 12px -2px rgba(5, 11, 31, 0.4), 0 2px 6px -1px rgba(255, 215, 0, 0.06);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(255, 215, 0, 0.08);
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  /* Color modifications to ensure high contrast, avoiding low contrast grey texts */
+  --color-yellow-450: #eab308;
+  --color-slate-950: #0b0f19;
 }
 
-@layer utilities {
-  .rtl-flip {
-    transform: scaleX(-1);
-  }
-}
-
-/* Glassmorphic custom properties for modern layout blur cards */
-.glass-card {
-  background: rgba(10, 18, 44, 0.65) !important;
-  backdrop-filter: blur(14px) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
-  border: 1px solid rgba(255, 215, 0, 0.15) !important;
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45) !important;
-}
-
-.glass-card-hover:hover {
-  background: rgba(16, 28, 64, 0.75) !important;
-  border-color: rgba(255, 215, 0, 0.3) !important;
-  box-shadow: 0 15px 45px 0 rgba(255, 215, 0, 0.06) !important;
-}
-
-.glass-nav {
-  background: rgba(10, 17, 36, 0.8) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.12) !important;
-}
-
-.glass-input {
-  background: rgba(5, 8, 20, 0.5) !important;
-  border: 1px solid rgba(255, 215, 0, 0.1) !important;
-  color: #ffffff !important;
-}
-
-.glass-input:focus {
-  border-color: #ffd700 !important;
-  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2) !important;
-}
-
-@keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
-}
-
-.animate-marquee {
-  animation: marquee 25s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
+body {
+  font-family: var(--font-sans);
+  background-color: var(--font-slate-950);
 }

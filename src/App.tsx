@@ -1,2516 +1,1278 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Home, 
-  UserPlus, 
-  AlertTriangle, 
   Heart, 
-  Vote, 
+  Activity, 
   Users, 
-  ShieldCheck, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Clock, 
-  Globe, 
-  CheckCircle2, 
-  XCircle, 
-  Clock4, 
-  Search, 
-  Megaphone, 
-  Plus, 
-  Check, 
-  Coins, 
-  User, 
-  Building2, 
+  Languages, 
+  Vote, 
+  Newspaper, 
+  Send, 
   ShieldAlert, 
-  Calendar,
-  Layers,
-  Sparkles,
-  ChevronRight,
-  ArrowRight
+  Building, 
+  PlusCircle, 
+  Check, 
+  MapPin, 
+  HelpCircle, 
+  Download,
+  LayoutDashboard
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Member, EmergencyReport, Donation, CabinetMember, NewsItem, Election, Language, Advertisement } from './types';
-import { i18nTranslations } from './i18n';
-import { initialCabinet, initialNews, initialMembers, initialReports, initialDonations, initialElections, initialAds } from './initialData';
-import { DigitalMemberId } from './components/DigitalMemberId';
-import { AdBillboard } from './components/AdBillboard';
-import pukhtoonLogo from './assets/images/pukhtoon_logo_1780560085059.png';
-import omanLandscape from './assets/images/oman_landscape_1780560990120.png';
-import { AdManager } from './components/AdManager';
+import { 
+  testConnection, 
+  seedAllCollections, 
+  fetchCollection, 
+  saveDocument, 
+  deleteDocument 
+} from './firebaseSync';
+import { 
+  initialMembers, 
+  initialReports, 
+  initialDonations, 
+  initialElections, 
+  initialNews, 
+  initialAds 
+} from './initialData';
+import { 
+  Member, 
+  EmergencyReport, 
+  Donation, 
+  Election, 
+  NewsItem, 
+  Advertisement, 
+  ContactMessage, 
+  Language
+} from './types';
+import { t } from './i18n';
+import { generateDonationReceipt } from './utils/receiptGenerator';
 import { CommunityDashboard } from './components/CommunityDashboard';
 import { AdminMembersDirectory } from './components/AdminMembersDirectory';
 
-// --- Firebase Connections & Sync ---
-import { auth } from './firebase';
-import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { 
-  initializeFirestoreData, 
-  saveDocument, 
-  removeDocument, 
-  fetchCollection 
-} from './firebaseSync';
-
 export default function App() {
-  // --- States ---
-  const [language, setLanguage] = useState<Language>(() => {
+  // --- Localisation State ---
+  const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem('opc_lang');
     return (saved as Language) || 'en';
   });
 
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const saved = localStorage.getItem('opc_active_tab');
-    return saved || 'home';
+  // --- Theme Contrast state ---
+  const [isHighContrast, setIsHighContrast] = useState(true);
+
+  // --- Active Tab State ---
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  // --- Simulate User Role State ---
+  const [activeRole, setActiveRole] = useState<'guest' | 'member' | 'admin'>(() => {
+    const saved = localStorage.getItem('opc_role');
+    return (saved as 'guest' | 'member' | 'admin') || 'guest';
   });
 
-  // Role simulation state so the reviewer can test all aspects of the site immediately!
-  const [simulatedRole, setSimulatedRole] = useState<'guest' | 'member' | 'admin'>(() => {
-    const saved = localStorage.getItem('opc_sim_role');
-    return (saved as 'guest' | 'member' | 'admin') || 'admin'; // Default to admin so they see the robust features first!
-  });
+  // --- Firestore Content Data State ---
+  const [members, setMembers] = useState<Member[]>(initialMembers);
+  const [reports, setReports] = useState<EmergencyReport[]>(initialReports);
+  const [donations, setDonations] = useState<Donation[]>(initialDonations);
+  const [elections, setElections] = useState<Election[]>(initialElections);
+  const [news, setNews] = useState<NewsItem[]>(initialNews);
+  const [ads, setAds] = useState<Advertisement[]>(initialAds);
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
 
-  // Dynamic database states using LocalStorage
-  const [members, setMembers] = useState<Member[]>(() => {
-    const saved = localStorage.getItem('opc_members');
-    return saved ? JSON.parse(saved) : initialMembers;
-  });
+  // --- Sync State Status Indicator ---
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(false);
 
-  const [reports, setReports] = useState<EmergencyReport[]>(() => {
-    const saved = localStorage.getItem('opc_reports');
-    return saved ? JSON.parse(saved) : initialReports;
-  });
+  // --- Action Feedback Alerts ---
+  const [feedback, setFeedback] = useState<string | null>(null);
 
-  const [donations, setDonations] = useState<Donation[]>(() => {
-    const saved = localStorage.getItem('opc_donations');
-    return saved ? JSON.parse(saved) : initialDonations;
-  });
-
-  const [elections, setElections] = useState<Election[]>(() => {
-    const saved = localStorage.getItem('opc_elections');
-    return saved ? JSON.parse(saved) : initialElections;
-  });
-
-  const [news, setNews] = useState<NewsItem[]>(() => {
-    const saved = localStorage.getItem('opc_news');
-    return saved ? JSON.parse(saved) : initialNews;
-  });
-
-  const [announcementMsg, setAnnouncementMsg] = useState<string>(() => {
-    return localStorage.getItem('opc_announcement') || 
-      "📢 Special Announcement: Welfare contribution portal is active! Contact the cabinet for immediate disaster response.";
-  });
-
-  const [ads, setAds] = useState<Advertisement[]>(() => {
-    const saved = localStorage.getItem('opc_ads');
-    return saved ? JSON.parse(saved) : initialAds;
-  });
-
-  const [adminOnlyAds, setAdminOnlyAds] = useState<boolean>(() => {
-    const saved = localStorage.getItem('opc_admin_only_ads');
-    return saved ? saved === 'true' : true; // Default to true (Only Admin Allowed to Run Ads)
-  });
-
-  const [showSimulatorBar, setShowSimulatorBar] = useState<boolean>(() => {
-    const saved = localStorage.getItem('opc_show_simulator_bar');
-    return saved ? saved === 'true' : false; // Default to false (hidden) per user request to hide simulator from the top section
-  });
-
-  // User input states inside different forms
-  // Registration Form
+  // --- Interactive Forms State ---
+  // Registration
   const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
-  const [regDistrict, setRegDistrict] = useState('');
-  const [regBlood, setRegBlood] = useState('O+');
-  const [regEmployer, setRegEmployer] = useState('');
-  const [regCity, setRegCity] = useState('');
-  const [regEmergency, setRegEmergency] = useState('');
-  const [regPhoto, setRegPhoto] = useState('');
-  const [regFeedback, setRegFeedback] = useState('');
+  const [regOmaniId, setRegOmaniId] = useState('');
+  const [regPassport, setRegPassport] = useState('');
+  const [regStay, setRegStay] = useState('');
+  const [regProfession, setRegProfession] = useState('');
+  const [regWelfareEligible, setRegWelfareEligible] = useState(true);
 
-  // Emergency Report Form
-  const [repType, setRepType] = useState<'death' | 'injury' | 'lost_passport' | 'other'>('injury');
-  const [repDesc, setRepDesc] = useState('');
-  const [repDate, setRepDate] = useState('');
-  const [repTime, setRepTime] = useState('');
+  // Crisis Alert Dispatcher
+  const [repName, setRepName] = useState('');
+  const [repPhone, setRepPhone] = useState('');
+  const [repSeverity, setRepSeverity] = useState<'low' | 'medium' | 'high'>('medium');
+  const [repCategory, setRepCategory] = useState<'death' | 'accident' | 'lost_passport' | 'medical_need' | 'general'>('medical_need');
   const [repLocation, setRepLocation] = useState('');
-  const [repContact, setRepContact] = useState('');
-  const [repFeedback, setRepFeedback] = useState('');
+  const [repDescription, setRepDescription] = useState('');
 
-  // Donation Form
+  // Donation Submission Slip
   const [donName, setDonName] = useState('');
   const [donAmount, setDonAmount] = useState('');
-  const [donMethod, setDonMethod] = useState<'bank' | 'mobile'>('bank');
-  const [donFeedback, setDonFeedback] = useState('');
+  const [donMethod, setDonMethod] = useState<'bank' | 'mobile_pay'>('bank');
+  const [donTxnId, setDonTxnId] = useState('');
 
-  // Contact Message Form
-  const [contactName, setContactName] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactMsg, setContactMsg] = useState('');
-  const [contactFeedback, setContactFeedback] = useState('');
+  // Submit Feedback Box
+  const [msgName, setMsgName] = useState('');
+  const [msgEmail, setMsgEmail] = useState('');
+  const [msgSubject, setMsgSubject] = useState('Suggestion');
+  const [msgBody, setMsgBody] = useState('');
 
-  // Admin Announcement Input
-  const [adminAnnText, setAdminAnnText] = useState('');
-  // Admin News Maker
-  const [adminNewsTitle, setAdminNewsTitle] = useState('');
-  const [adminNewsContent, setAdminNewsContent] = useState('');
-  const [adminNewsCategory, setAdminNewsCategory] = useState<'general' | 'announcement' | 'event'>('general');
+  // Cast Ballots tracking
+  const [votedElections, setVotedElections] = useState<string[]>([]);
 
-  // Admin Login States
-  const [adminUsernameInput, setAdminUsernameInput] = useState('');
-  const [adminPasswordInput, setAdminPasswordInput] = useState('');
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('opc_admin_auth') === 'true';
-  });
-  const [loginError, setLoginError] = useState('');
+  // Ads Index carousel tracking
+  const [activeAdIndex, setActiveAdIndex] = useState(0);
 
-  // Donation Search & Filter ledger
-  const [donationSearchQuery, setDonationSearchQuery] = useState('');
-
-  // Active member selected for card viewing or searching
-  const [selectedIDMember, setSelectedIDMember] = useState<Member | null>(null);
-
-  const currentMember = useMemo(() => {
-    return members.find(m => m.id === 'user-1' && m.status === 'approved') || members.find(m => m.status === 'approved') || null;
-  }, [members]);
-
-  // Vote tracker (prevents voting twice in same tab)
-  const [votedIds, setVotedIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('opc_voted_ids');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // --- Firebase Sync States ---
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [isFirebaseSyncing, setIsFirebaseSyncing] = useState<boolean>(true);
-  const [firebaseStatus, setFirebaseStatus] = useState<'connected' | 'offline' | 'error'>('offline');
-
+  // --- Firebase Seeding and Live Fetching ---
   useEffect(() => {
-    const syncDb = async () => {
+    async function initFirestore() {
       try {
-        setIsFirebaseSyncing(true);
-        await initializeFirestoreData();
-        setFirebaseStatus('connected');
+        await testConnection();
+        await seedAllCollections();
+        
+        // Fetch Live Collections
+        const fetchedMembers = await fetchCollection<Member>('members');
+        const fetchedReports = await fetchCollection<EmergencyReport>('reports');
+        const fetchedDonations = await fetchCollection<Donation>('donations');
+        const fetchedElections = await fetchCollection<Election>('elections');
+        const fetchedNews = await fetchCollection<NewsItem>('news');
+        const fetchedAds = await fetchCollection<Advertisement>('advertisements');
+        const fetchedMsgs = await fetchCollection<ContactMessage>('contactMessages');
 
-        const liveMembers = await fetchCollection<Member>('members');
-        const liveReports = await fetchCollection<EmergencyReport>('reports');
-        const liveDonations = await fetchCollection<Donation>('donations');
-        const liveElections = await fetchCollection<Election>('elections');
-        const liveNews = await fetchCollection<NewsItem>('news');
-        const liveAds = await fetchCollection<Advertisement>('ads');
+        if (fetchedMembers.length > 0) setMembers(fetchedMembers);
+        if (fetchedReports.length > 0) setReports(fetchedReports);
+        if (fetchedDonations.length > 0) setDonations(fetchedDonations);
+        if (fetchedElections.length > 0) setElections(fetchedElections);
+        if (fetchedNews.length > 0) setNews(fetchedNews);
+        if (fetchedAds.length > 0) setAds(fetchedAds);
+        if (fetchedMsgs.length > 0) setMessages(fetchedMsgs);
 
-        if (liveMembers.length > 0) setMembers(liveMembers);
-        if (liveReports.length > 0) setReports(liveReports);
-        if (liveDonations.length > 0) setDonations(liveDonations);
-        if (liveElections.length > 0) setElections(liveElections);
-        if (liveNews.length > 0) setNews(liveNews);
-        if (liveAds.length > 0) setAds(liveAds);
-
-        // Try getting administrative announcer setting from Firestore
-        const settingsDocs = await fetchCollection<{announcement: string}>('settings');
-        const annDoc = settingsDocs.find(s => s.announcement);
-        if (annDoc) {
-          setAnnouncementMsg(annDoc.announcement);
-        }
-
-        setIsFirebaseSyncing(false);
+        setIsOnline(true);
       } catch (err) {
-        console.error("Firestore sync issue:", err);
-        setFirebaseStatus('error');
-        setIsFirebaseSyncing(false);
+        console.warn("Using offline standalone states due to network boundaries:", err);
+        setIsOnline(false);
+      } finally {
+        setIsLoading(false);
       }
-    };
-    syncDb();
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
-      if (user) {
-        if (user.email === 'abuhamdan144@gmail.com') {
-          setSimulatedRole('admin');
-          setIsAdminLoggedIn(true);
-        } else {
-          setSimulatedRole('member');
-        }
-      }
-    });
-
-    return () => unsubscribe();
+    }
+    initFirestore();
   }, []);
 
-  // --- Synchronization Effects ---
+  // Sync state variables across localStorage fallback
   useEffect(() => {
-    localStorage.setItem('opc_lang', language);
-  }, [language]);
+    localStorage.setItem('opc_lang', lang);
+  }, [lang]);
 
   useEffect(() => {
-    localStorage.setItem('opc_active_tab', activeTab);
-  }, [activeTab]);
+    localStorage.setItem('opc_role', activeRole);
+  }, [activeRole]);
 
+  // Visual billboard slider timer transition
   useEffect(() => {
-    localStorage.setItem('opc_sim_role', simulatedRole);
-  }, [simulatedRole]);
-
-  useEffect(() => {
-    localStorage.setItem('opc_members', JSON.stringify(members));
-  }, [members]);
-
-  useEffect(() => {
-    localStorage.setItem('opc_reports', JSON.stringify(reports));
-  }, [reports]);
-
-  useEffect(() => {
-    localStorage.setItem('opc_donations', JSON.stringify(donations));
-  }, [donations]);
-
-  useEffect(() => {
-    localStorage.setItem('opc_elections', JSON.stringify(elections));
-  }, [elections]);
-
-  useEffect(() => {
-    localStorage.setItem('opc_news', JSON.stringify(news));
-  }, [news]);
-
-  useEffect(() => {
-    localStorage.setItem('opc_ads', JSON.stringify(ads));
+    if (ads.length === 0) return;
+    const interval = setInterval(() => {
+      setActiveAdIndex(prev => (prev + 1) % ads.length);
+    }, 7000);
+    return () => clearInterval(interval);
   }, [ads]);
 
-  useEffect(() => {
-    localStorage.setItem('opc_admin_only_ads', String(adminOnlyAds));
-  }, [adminOnlyAds]);
+  // --- Form submission handlers (Push to state + Firestore DB sync) ---
 
-  useEffect(() => {
-    localStorage.setItem('opc_show_simulator_bar', String(showSimulatorBar));
-  }, [showSimulatorBar]);
-
-  useEffect(() => {
-    localStorage.setItem('opc_voted_ids', JSON.stringify(votedIds));
-  }, [votedIds]);
-
-  useEffect(() => {
-    localStorage.setItem('opc_admin_auth', isAdminLoggedIn ? 'true' : 'false');
-  }, [isAdminLoggedIn]);
-
-  useEffect(() => {
-    if (simulatedRole !== 'admin') {
-      setIsAdminLoggedIn(false);
-    }
-  }, [simulatedRole]);
-
-  // Translate helpers
-  const t = (key: string) => {
-    return i18nTranslations[language][key] || i18nTranslations['en'][key] || key;
-  };
-
-  const isRtl = language === 'ur' || language === 'ps';
-
-  // --- Computed Stats ---
-  const totals = useMemo(() => {
-    const approvedMemberCount = members.filter(m => m.status === 'approved').length;
-    
-    // Sum of verified donations only
-    const verifiedDonTotal = donations
-      .filter(d => d.status === 'verified')
-      .reduce((acc, curr) => acc + curr.amount, 0);
-
-    const activeEmergencyCount = reports.filter(r => r.status !== 'resolved').length;
-
-    return {
-      membersCount: approvedMemberCount,
-      treasuryBalance: verifiedDonTotal,
-      activeEmergencies: activeEmergencyCount
-    };
-  }, [members, donations, reports]);
-
-  // Handle Photo upload conversions (Base64 wrapper for realistic photos inside the UI)
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setRegPhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // --- Submissions ---
-  // 1. Members Registration
-  const submitMemberRegistration = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName || !regPhone) {
-      alert("Name and Phone are required.");
+    if (!regName.trim() || !regPassport.trim() || !regOmaniId.trim()) {
+      alert("Please fulfill Name, Passport, and civil ID fields.");
       return;
     }
 
+    const newDocId = `mem-${Date.now().toString().slice(-6)}`;
     const newMember: Member = {
-      id: "user-" + Date.now(),
-      name: regName,
-      email: regEmail || "unspecified@community.com",
-      phone: regPhone,
-      bloodGroup: regBlood,
-      district: regDistrict || "Khyber Pakhtunkhwa",
-      city: regCity || "Muscat",
-      employer: regEmployer || "Self-Employed",
-      emergencyContact: regEmergency || "Relative in Pakistan",
-      status: "pending",
-      photoUrl: regPhoto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200",
-      joinedDate: new Date().toISOString().split('T')[0]
+      id: newDocId,
+      fullName: regName,
+      phone: regPhone || "N/A",
+      passportNo: regPassport,
+      omaniId: regOmaniId,
+      registrationDate: new Date().toISOString().split('T')[0],
+      durationOfOmanStay: regStay || "None specified",
+      profession: regProfession || "General Worker",
+      isWelfareEligible: regWelfareEligible,
+      status: 'pending' // Queued for Cabinet trustee approval
     };
 
-    setMembers(prev => [newMember, ...prev]);
-    saveDocument('members', newMember.id, newMember);
-    setRegFeedback(t('regSuccess'));
+    const updated = [newMember, ...members];
+    setMembers(updated);
     
-    // Reset forms
+    // Clear Form inputs
     setRegName('');
-    setRegEmail('');
     setRegPhone('');
-    setRegDistrict('');
-    setRegEmployer('');
-    setRegCity('');
-    setRegEmergency('');
-    setRegPhoto('');
-    
-    setTimeout(() => setRegFeedback(''), 10000);
+    setRegOmaniId('');
+    setRegPassport('');
+    setRegStay('');
+    setRegProfession('');
+
+    setFeedback(t(lang, 'regSuccess'));
+    setTimeout(() => setFeedback(null), 6000);
+
+    // Sync is asynchronous
+    if (isOnline) {
+      await saveDocument('members', newDocId, newMember);
+    }
   };
 
-  // 2. Incident Emergency report
-  const submitEmergencyReport = (e: React.FormEvent) => {
+  const handleReportEmergency = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!repDesc || !repContact) {
-      alert("Description and Callback number are required.");
+    if (!repName.trim() || !repLocation.trim() || !repDescription.trim()) {
+      alert("Complete name, location, and description details to broadcast emergency alert.");
       return;
     }
 
-    const currentReporter = members.find(m => m.status === 'approved') || { name: 'Local Resident', id: 'guest' };
-
-    const nowStamp = new Date();
-    let formattedTimeInput = repTime;
-    if (repTime && repTime.includes(':')) {
-      const [hStr, mStr] = repTime.split(':');
-      const hour = parseInt(hStr, 10);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour % 12 || 12;
-      formattedTimeInput = `${String(displayHour).padStart(2, '0')}:${mStr} ${ampm}`;
-    }
-    const defaultTime = nowStamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const finalTime = formattedTimeInput || defaultTime;
-
+    const newDocId = `rep-${Date.now().toString().slice(-6)}`;
     const newReport: EmergencyReport = {
-      id: "rep-" + Date.now(),
-      userId: currentReporter.id,
-      reporterName: currentReporter.name,
-      type: repType,
-      description: repDesc,
-      date: repDate || nowStamp.toISOString().split('T')[0],
-      time: finalTime,
-      location: repLocation || "Sultanate of Oman",
-      contactInfo: repContact,
-      status: "pending"
+      id: newDocId,
+      reporterName: repName,
+      reporterPhone: repPhone || "N/A",
+      severity: repSeverity,
+      category: repCategory,
+      location: repLocation,
+      description: repDescription,
+      date: new Date().toISOString().split('T')[0],
+      status: 'pending'
     };
 
-    setReports(prev => [newReport, ...prev]);
-    saveDocument('reports', newReport.id, newReport);
-    setRepFeedback(t('reportSent'));
-
-    // Reset fields
-    setRepDesc('');
+    setReports([newReport, ...reports]);
+    setRepName('');
+    setRepPhone('');
     setRepLocation('');
-    setRepContact('');
-    setRepDate('');
-    setRepTime('');
+    setRepDescription('');
 
-    setTimeout(() => setRepFeedback(''), 10000);
+    setFeedback(t(lang, 'reportSent'));
+    setTimeout(() => setFeedback(null), 6000);
+
+    if (isOnline) {
+      await saveDocument('reports', newDocId, newReport);
+    }
   };
 
-  // 3. Donation Record Submissions
-  const submitDonationLog = (e: React.FormEvent) => {
+  const handleDonationSlip = async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsedAmount = parseFloat(donAmount);
-    if (!donName || isNaN(parsedAmount) || parsedAmount <= 0) {
-      alert("Please enter a valid donor name and amount greater than 0 OMR.");
+    const amountNum = parseFloat(donAmount);
+    if (!donName.trim() || isNaN(amountNum) || amountNum <= 0 || !donTxnId.trim()) {
+      alert("Specify proper Contributor name, positive amount, and reference ID.");
       return;
     }
 
-    const newDonation: Donation = {
-      id: "don-" + Date.now(),
+    const newDocId = `don-${Date.now().toString().slice(-6)}`;
+    const newDon: Donation = {
+      id: newDocId,
       donorName: donName,
-      amount: parsedAmount,
+      amount: amountNum,
       date: new Date().toISOString().split('T')[0],
-      status: "pending",
-      method: donMethod
+      method: donMethod,
+      transactionId: donTxnId,
+      status: 'pending'
     };
 
-    setDonations(prev => [newDonation, ...prev]);
-    saveDocument('donations', newDonation.id, newDonation);
-    setDonFeedback(t('donationSuccess'));
-
+    setDonations([newDon, ...donations]);
     setDonName('');
     setDonAmount('');
+    setDonTxnId('');
 
-    setTimeout(() => setDonFeedback(''), 10000);
+    setFeedback(t(lang, 'donationSuccess'));
+    setTimeout(() => setFeedback(null), 6000);
+
+    if (isOnline) {
+      await saveDocument('donations', newDocId, newDon);
+    }
   };
 
-  // 4. Contact Suggestion Log
-  const submitContactMsg = (e: React.FormEvent) => {
+  const handleContactMsg = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contactName || !contactMsg) {
-      alert("Name and message are required.");
+    if (!msgName.trim() || !msgBody.trim()) {
+      alert("Name and message query fields cannot be blank.");
       return;
     }
 
-    const newMessage = {
-      id: Date.now(),
-      name: contactName,
-      email: contactEmail,
-      message: contactMsg,
-      date: new Date().toLocaleString()
+    const newDocId = `msg-${Date.now().toString().slice(-6)}`;
+    const newMsg: ContactMessage = {
+      id: newDocId,
+      name: msgName,
+      email: msgEmail || "not_provided@opc.com",
+      message: `${msgSubject}: ${msgBody}`,
+      date: new Date().toISOString().split('T')[0]
     };
 
-    const existingMsgs = localStorage.getItem('opc_contact_msgs');
-    const list = existingMsgs ? JSON.parse(existingMsgs) : [];
-    list.push(newMessage);
-    localStorage.setItem('opc_contact_msgs', JSON.stringify(list));
+    setMessages([newMsg, ...messages]);
+    setMsgName('');
+    setMsgEmail('');
+    setMsgBody('');
 
-    const firebaseMsg = {
-      id: String(newMessage.id),
-      name: newMessage.name,
-      phone: "",
-      subject: "Suggestion Feed",
-      message: newMessage.message,
-      createdAt: newMessage.date,
-      read: false
-    };
-    saveDocument('contact_msgs', firebaseMsg.id, firebaseMsg);
+    setFeedback(t(lang, 'messageSaved'));
+    setTimeout(() => setFeedback(null), 6000);
 
-    setContactFeedback(t('messageSaved'));
-    setContactName('');
-    setContactEmail('');
-    setContactMsg('');
-
-    setTimeout(() => setContactFeedback(''), 10000);
+    if (isOnline) {
+      await saveDocument('contactMessages', newDocId, newMsg);
+    }
   };
 
-  // --- Voting Flow ---
-  const handleVote = (electionId: string, candidateId: string) => {
-    if (votedIds.includes(electionId)) {
-      alert(t('votedAlready'));
+  // --- Ballot Register ---
+  const handleVote = async (electionId: string, candidateId: string) => {
+    if (votedElections.includes(electionId)) {
+      setFeedback(t(lang, 'votedAlready'));
+      setTimeout(() => setFeedback(null), 3000);
       return;
     }
 
-    setElections(prev => {
-      const updated = prev.map(elec => {
-        if (elec.id === electionId) {
-          const nextElec = {
-            ...elec,
-            candidates: elec.candidates.map(cand => {
-              if (cand.id === candidateId) {
-                return { ...cand, votes: cand.votes + 1 };
-              }
-              return cand;
-            })
-          };
-          saveDocument('elections', electionId, nextElec);
-          return nextElec;
+    // Mutate state of chosen candidate
+    const updatedElections = elections.map(elec => {
+      if (elec.id === electionId) {
+        const updatedCands = elec.candidates.map(cand => {
+          if (cand.id === candidateId) {
+            return { ...cand, votes: cand.votes + 1 };
+          }
+          return cand;
+        });
+        
+        // Sync to cloud if live
+        const chosenElection = { ...elec, candidates: updatedCands };
+        if (isOnline) {
+          saveDocument('elections', elec.id, chosenElection);
         }
-        return elec;
-      });
-      return updated;
+        return chosenElection;
+      }
+      return elec;
     });
 
-    setVotedIds(prev => [...prev, electionId]);
-    alert(t('voteLogged'));
+    setElections(updatedElections);
+    setVotedElections([...votedElections, electionId]);
+    setFeedback(t(lang, 'voteLogged'));
+    setTimeout(() => setFeedback(null), 4000);
   };
 
-  // --- Admin Administrative Actions ---
-  const approveMember = (id: string) => {
-    setMembers(prev => prev.map(m => {
-      if (m.id === id) {
-        const updated = { ...m, status: 'approved' as const };
-        saveDocument('members', id, updated);
-        return updated;
-      }
-      return m;
-    }));
-  };
+  // --- Administrative control callbacks ---
 
-  const rejectMember = (id: string) => {
-    setMembers(prev => prev.map(m => {
-      if (m.id === id) {
-        const updated = { ...m, status: 'rejected' as const };
-        saveDocument('members', id, updated);
-        return updated;
-      }
-      return m;
-    }));
-  };
-
-  const deleteMember = (id: string) => {
-    setMembers(prev => prev.filter(m => m.id !== id));
-    removeDocument('members', id);
-  };
-
-  const verifyDonation = (id: string) => {
-    setDonations(prev => prev.map(d => {
-      if (d.id === id) {
-        const updated = { ...d, status: 'verified' as const };
-        saveDocument('donations', id, updated);
-        return updated;
-      }
-      return d;
-    }));
-  };
-
-  const getWhatsAppLink = (phone: string, message?: string) => {
-    const cleaned = phone.replace(/\D/g, '');
-    let formatted = cleaned;
-    if (cleaned.length === 8 && (cleaned.startsWith('7') || cleaned.startsWith('9') || cleaned.startsWith('2'))) {
-      formatted = '968' + cleaned;
+  const handleApproveMemberOnDB = async (id: string) => {
+    const updated = members.map(m => m.id === id ? { ...m, status: 'approved' as const } : m);
+    setMembers(updated);
+    if (isOnline) {
+      const match = updated.find(m => m.id === id);
+      if (match) await saveDocument('members', id, match);
     }
-    const url = `https://wa.me/${formatted}`;
-    if (message) {
-      return `${url}?text=${encodeURIComponent(message)}`;
+  };
+
+  const handleRejectMemberOnDB = async (id: string) => {
+    const updated = members.map(m => m.id === id ? { ...m, status: 'rejected' as const } : m);
+    setMembers(updated);
+    if (isOnline) {
+      const match = updated.find(m => m.id === id);
+      if (match) await saveDocument('members', id, match);
     }
-    return url;
   };
 
-  const rejectDonation = (id: string) => {
-    setDonations(prev => prev.map(d => {
-      if (d.id === id) {
-        const updated = { ...d, status: 'rejected' as const };
-        saveDocument('donations', id, updated);
-        return updated;
-      }
-      return d;
-    }));
-  };
-
-  const changeReportStatus = (id: string, newStatus: 'pending' | 'verified' | 'resolved') => {
-    setReports(prev => prev.map(r => {
-      if (r.id === id) {
-        const updated = { ...r, status: newStatus };
-        saveDocument('reports', id, updated);
-        return updated;
-      }
-      return r;
-    }));
-  };
-
-  const saveAdminAnnouncement = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!adminAnnText.trim()) return;
-    setAnnouncementMsg(adminAnnText);
-    localStorage.setItem('opc_announcement', adminAnnText);
-    saveDocument('settings', 'announcement', { announcement: adminAnnText });
-    alert("Billboard notice successfully updated across the portal!");
-    setAdminAnnText('');
-  };
-
-  const publishAdminNews = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!adminNewsTitle || !adminNewsContent) {
-      alert("News title and content are required.");
-      return;
+  const handleApproveDonationOnDB = async (id: string) => {
+    const updated = donations.map(d => d.id === id ? { ...d, status: 'verified' as const } : d);
+    setDonations(updated);
+    if (isOnline) {
+      const match = updated.find(m => m.id === id);
+      if (match) await saveDocument('donations', id, match);
     }
-
-    const nItem: NewsItem = {
-      id: "news-" + Date.now(),
-      title: adminNewsTitle,
-      content: adminNewsContent,
-      date: new Date().toISOString().split('T')[0],
-      category: adminNewsCategory
-    };
-
-    setNews(prev => [nItem, ...prev]);
-    saveDocument('news', nItem.id, nItem);
-    alert("News item published to live portal feed!");
-    setAdminNewsTitle('');
-    setAdminNewsContent('');
   };
 
-  const handleAddAd = (newAd: Advertisement) => {
-    setAds(prev => [newAd, ...prev]);
-    saveDocument('ads', newAd.id, newAd);
+  const handleRejectDonationOnDB = async (id: string) => {
+    const updated = donations.map(d => d.id === id ? { ...d, status: 'rejected' as const } : d);
+    setDonations(updated);
+    if (isOnline) {
+      const match = updated.find(m => m.id === id);
+      if (match) await saveDocument('donations', id, match);
+    }
   };
 
-  const handleRemoveAd = (id: string) => {
-    setAds(prev => prev.filter(ad => ad.id !== id));
-    removeDocument('ads', id);
+  const handleDeleteMemberOnDB = async (id: string) => {
+    const updated = members.filter(m => m.id !== id);
+    setMembers(updated);
+    if (isOnline) {
+      await deleteDocument('members', id);
+    }
   };
 
-  const handleToggleAd = (id: string) => {
-    setAds(prev => prev.map(ad => {
-      if (ad.id === id) {
-        const updated = { ...ad, isActive: !ad.isActive };
-        saveDocument('ads', id, updated);
-        return updated;
-      }
-      return ad;
-    }));
-  };
-
-  // --- Filtered Donation Ledger List ---
-  const filteredDonations = useMemo(() => {
-    return donations.filter(d => {
-      const criteria = donationSearchQuery.toLowerCase();
-      return (
-        d.donorName.toLowerCase().includes(criteria) ||
-        d.method.toLowerCase().includes(criteria) ||
-        d.amount.toString().includes(criteria)
-      );
-    });
-  }, [donations, donationSearchQuery]);
-
-  // Export records of approved members to CSV (Simulated download file)
-  const downloadMembersCSV = () => {
-    const headers = "ID,Full Name,Email,Oman Mobile,Blood Group,Hometown District,Oman City,Sponsor/Employer,Emergency Contact,Status,Joined Date\n";
-    const rows = members.map(m => 
-      `"${m.id}","${m.name}","${m.email}","${m.phone}","${m.bloodGroup}","${m.district}","${m.city}","${m.employer}","${m.emergencyContact}","${m.status}","${m.joinedDate}"`
-    ).join("\n");
-
-    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Oman_Pakhtoon_Members_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  // --- Dynamic Ad elements ---
+  const currentAd = ads[activeAdIndex] || null;
 
   return (
-    <div 
-      className="min-h-screen bg-gray-50 flex flex-col font-sans transition-all duration-300 antialiased relative"
-      dir={isRtl ? 'rtl' : 'ltr'}
-    >
-      {/* Subtle Site-wide background watermark */}
-      <div className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center opacity-[0.02] select-none overflow-hidden">
-        <img 
-          src={pukhtoonLogo} 
-          alt="" 
-          className="w-[70vw] h-[70vw] max-w-[750px] max-h-[750px] object-contain rotate-6"
-          referrerPolicy="no-referrer"
-        />
+    <div id="root-portal-view" className={`min-h-screen pb-16 transition-colors duration-300 font-sans ${isHighContrast ? 'bg-slate-950 text-slate-50' : 'bg-slate-900 text-slate-100'}`}>
+      
+      {/* A. Top Security Sync & Simulated Role Bar */}
+      <div className="bg-slate-900 border-b border-slate-800 text-slate-100 py-2.5 px-4 sticky top-0 z-50 shadow-md">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          
+          {/* Status Pillar */}
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-2.5 w-2.5 relative">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isOnline ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isOnline ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+            </span>
+            <span className="font-mono uppercase font-bold text-[10px] tracking-wider text-slate-100">
+              {isOnline ? 'Firebase Ledger Sync Online' : 'Standard Fallback Offline Mode'}
+            </span>
+            {isLoading && <span className="text-[10px] text-amber-400 animate-pulse">(updating document caches...)</span>}
+          </div>
+
+          {/* User role simulator */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-slate-400 uppercase tracking-wide font-bold">{t(lang, 'simRoleLabel')}</span>
+            
+            <button 
+              onClick={() => setActiveRole('guest')}
+              className={`px-2.5 py-1 rounded font-mono font-bold transition cursor-pointer text-[10px] uppercase border ${activeRole === 'guest' ? 'bg-slate-100 text-slate-950 border-white' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'}`}
+            >
+              👤 {t(lang, 'guestLabel')}
+            </button>
+
+            <button 
+              onClick={() => setActiveRole('member')}
+              className={`px-2.5 py-1 rounded font-mono font-bold transition cursor-pointer text-[10px] uppercase border ${activeRole === 'member' ? 'bg-indigo-500 text-slate-950 border-indigo-400' : 'bg-slate-950 text-indigo-400 border-slate-800 hover:text-indigo-300'}`}
+            >
+              💳 {t(lang, 'memberLabel')}
+            </button>
+
+            <button 
+              onClick={() => setActiveRole('admin')}
+              className={`px-2.5 py-1 rounded font-mono font-bold transition cursor-pointer text-[10px] uppercase border ${activeRole === 'admin' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-950 text-amber-400 border-slate-800 hover:text-amber-350'}`}
+            >
+              👑 {t(lang, 'adminLabel')}
+            </button>
+          </div>
+
+        </div>
       </div>
 
-      {/* 🟢 TOP SIMULATOR & FLAG BAR */}
-      {showSimulatorBar && (
-        <div className="bg-slate-900 text-slate-100 py-2.5 px-4 text-xs border-b border-slate-800">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-            {/* Quick simulator status */}
-            <div className="flex items-center gap-2 flex-wrap justify-center font-sans">
-              <span className="text-emerald-400 font-semibold uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> Portal Simulator:
-              </span>
-              <span className="text-slate-300 animate-pulse">Choose who you are simulating to test full portal mechanics:</span>
-              <div className="inline-flex rounded-md shadow-xs overflow-hidden border border-slate-700 bg-slate-800 p-0.5 ml-1">
-                <button 
-                  onClick={() => setSimulatedRole('guest')}
-                  className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-all ${simulatedRole === 'guest' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                >
-                  Guest Expat
-                </button>
-                <button 
-                  onClick={() => setSimulatedRole('member')}
-                  className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-all ${simulatedRole === 'member' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                >
-                  Approved Member (Amjad)
-                </button>
-                <button 
-                  onClick={() => setSimulatedRole('admin')}
-                  className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-all ${simulatedRole === 'admin' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                >
-                  Finance Sec. Admin (Ikram)
-                </button>
-              </div>
-            </div>
-
-            {/* Social icons & indicators */}
-            <div className="flex items-center gap-4.5 font-medium font-sans">
-              <span className="flex items-center gap-1.5 text-slate-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Muscat Server Live
-              </span>
-              <div className="h-4 w-px bg-slate-700"></div>
-              <a 
-                href="https://ais-dev-kwgj634upw3m2n2rbxh53o-469166214171.europe-west1.run.app" 
-                target="_blank" 
-                className="hover:text-emerald-400 transition"
-                referrerPolicy="no-referrer"
-              >
-                Welfare Desk
-              </a>
-              <div className="h-4 w-px bg-slate-700"></div>
-              <button 
-                onClick={() => setShowSimulatorBar(false)}
-                className="text-slate-350 hover:text-red-400 transition cursor-pointer text-[10px] font-bold uppercase tracking-wider bg-slate-805 hover:bg-slate-800 px-2 py-0.5 rounded border border-slate-700"
-                title="Hide simulator banner"
-              >
-                Hide ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 🟢 HERO EMBASSY BANNER AREA */}
-      <header className="relative bg-cover bg-center text-white py-16 px-6 md:px-12 overflow-hidden border-b-4 border-yellow-400 shadow-2xl" style={{ backgroundImage: `url(${omanLandscape})` }}>
-        <div className="absolute inset-0 z-0 bg-gradient-to-r from-gray-950/95 via-emerald-950/85 to-indigo-950/40 backdrop-blur-xs"></div>
-
-        <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-5">
-            {/* Beautiful Official Pukhtoon Community Logo */}
-            <div className="w-24 h-24 bg-white/95 rounded-full p-1.5 shadow-xl flex items-center justify-center border-3 border-yellow-400 relative shrink-0">
-              <img 
-                src={pukhtoonLogo} 
-                alt="Pukhtoon Community Logo" 
-                className="w-full h-full rounded-full object-contain bg-white"
-                referrerPolicy="no-referrer"
-              />
-              <span className="absolute -bottom-1 right-1 bg-yellow-400 text-emerald-950 font-black px-2 py-0.5 rounded text-[9px] tracking-wide border border-white">
-                PORTAL
-              </span>
-            </div>
-
-            <div className={`${isRtl ? 'text-right' : 'text-left'} space-y-1.5`}>
-              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight font-display text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-100 to-yellow-300">
-                {t('appTitle')}
-              </h1>
-              <p className="text-sm md:text-lg text-emerald-100/90 font-medium max-w-2xl font-sans leading-relaxed">
-                {t('appSubtitle')}
-              </p>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="inline-block font-black text-yellow-400 text-xs px-3.5 py-1 rounded-full bg-emerald-950/80 border border-yellow-500/25 font-urdu tracking-wide">
-                  {t('appSlogan')}
-                </span>
-                <span className="text-[10px] bg-yellow-400/10 text-yellow-300 border border-yellow-400/25 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  🇴🇲 Sultanate of Oman
-                </span>
-              </div>
-            </div>
+      {/* B. Master Interactive Header Bar */}
+      <header className="bg-slate-900/50 border-b border-slate-800 py-6 px-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          
+          <div className="space-y-1">
+            <h1 className="text-3xl font-display font-extrabold tracking-tight text-white flex items-center gap-3">
+              <Building className="text-amber-500 h-8 w-8" />
+              {t(lang, 'portalTitle')}
+            </h1>
+            <p className="text-sm font-medium text-amber-500/95" style={{ color: '#fbbf24' }}>
+              {t(lang, 'portalSubtitle')}
+            </p>
           </div>
 
-          {/* Language Selector & Firebase status bar with glassmorphic effect */}
-          <div className="flex flex-col gap-3 shrink-0 items-end">
-            {/* Language Selector Selector Component with glassmorphic effect */}
-            <div className="flex items-center gap-3 bg-slate-900/90 p-2.5 rounded-2xl border border-yellow-400/20 shadow-xl backdrop-blur-md">
-              <Globe className="w-4 h-4 text-yellow-450 shrink-0" />
-              <span className="text-xs text-slate-300 font-bold whitespace-nowrap">{t('switchLanguage')}:</span>
-              <div className="flex gap-1.5">
-                {(['en', 'ur', 'ps'] as Language[]).map((ln) => (
-                  <button
-                    key={ln}
-                    onClick={() => setLanguage(ln)}
-                    className={`px-3 py-1 text-[11px] font-black rounded-lg transition-all ${
-                      language === ln 
-                        ? 'bg-yellow-450 text-slate-950 shadow-sm font-black' 
-                        : 'text-slate-300 hover:bg-white/10 hover:text-yellow-300'
-                    }`}
-                  >
-                    {ln === 'en' ? 'English' : ln === 'ur' ? 'اردو' : 'پښتو'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 🔒 Firebase Google Authentication Sync Container */}
-            <div className="flex items-center gap-3 bg-slate-900/90 px-3 py-2 rounded-2xl border border-emerald-500/20 shadow-xl backdrop-blur-md">
-              <div className="flex items-center gap-1.5 mr-1 shrink-0">
-                <span className={`w-2 h-2 rounded-full ${firebaseStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-                <span className="text-[10px] text-slate-300 font-mono tracking-tight font-medium">
-                  {firebaseStatus === 'connected' ? 'Firebase Live' : 'Offline Mode'}
-                </span>
+          {/* Language and Contrast Toolbar */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Language translation flags */}
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-850">
+              <div className="px-2 text-slate-400 flex items-center gap-1">
+                <Languages className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[10px] font-mono tracking-wider font-bold uppercase">{t(lang, 'switchLanguage')}:</span>
               </div>
               
-              {firebaseUser ? (
-                <div className="flex items-center gap-2">
-                  {firebaseUser.photoURL ? (
-                    <img src={firebaseUser.photoURL} alt="" className="w-5 h-5 rounded-full border border-yellow-400" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-5 h-5 rounded-full bg-slate-700 text-[10px] text-white flex items-center justify-center uppercase font-black">
-                      {firebaseUser.email?.[0] || 'U'}
-                    </div>
-                  )}
-                  <span className="text-[10px] font-bold text-yellow-450 truncate max-w-[120px] hidden sm:block">
-                    {firebaseUser.displayName?.split(' ')[0] || firebaseUser.email}
-                  </span>
-                  <button
-                    onClick={() => signOut(auth)}
-                    className="text-[10px] px-2.5 py-1 font-extrabold text-slate-350 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
-                  >
-                    {language === 'en' ? 'Sign Out' : 'لاگ آؤٹ'}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={async () => {
-                    try {
-                      const provider = new GoogleAuthProvider();
-                      await signInWithPopup(auth, provider);
-                    } catch (error) {
-                      console.error("Auth Fail:", error);
-                    }
-                  }}
-                  className="flex items-center gap-1.5 text-[10px] font-black bg-gradient-to-r from-yellow-450 to-amber-500 text-slate-950 px-3 py-1.5 rounded-xl hover:from-yellow-400 hover:to-amber-450 shadow-md transition-all active:scale-95 cursor-pointer"
-                >
-                  <Sparkles className="w-3 h-3 shrink-0" />
-                  <span>{language === 'en' ? 'Sign in with Google' : 'گوگل سے لاگ ان'}</span>
-                </button>
-              )}
+              <button 
+                onClick={() => setLang('en')}
+                className={`px-3 py-1 text-xs rounded-lg transition font-sans font-extrabold cursor-pointer ${lang === 'en' ? 'bg-slate-100 text-slate-950' : 'text-slate-100 hover:bg-slate-900'}`}
+              >
+                🇬🇧 English (EN)
+              </button>
+
+              <button 
+                onClick={() => setLang('ur')}
+                className={`px-3 py-1 text-xs rounded-lg transition font-sans font-extrabold cursor-pointer ${lang === 'ur' ? 'bg-amber-500 text-slate-950' : 'text-slate-100 hover:bg-slate-900'}`}
+              >
+                🇵🇰 اردو (UR)
+              </button>
+
+              <button 
+                onClick={() => setLang('ps')}
+                className={`px-3 py-1 text-xs rounded-lg transition font-sans font-extrabold cursor-pointer ${lang === 'ps' ? 'bg-amber-500 text-slate-950' : 'text-slate-100 hover:bg-slate-900'}`}
+              >
+                🇦🇫 پښتو (PS)
+              </button>
             </div>
+
+            {/* Accessible Contrast Mode Button */}
+            <button
+              onClick={() => setIsHighContrast(!isHighContrast)}
+              className={`px-3 py-2 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${isHighContrast ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-950 text-slate-300 border-slate-850 hover:border-slate-700'}`}
+            >
+              <span>👁️</span> 
+              <span>{isHighContrast ? 'High Contrast' : 'Normal Contrast'}</span>
+            </button>
           </div>
+
         </div>
       </header>
 
-      {/* 🟢 DYNAMIC ANNOUNCEMENT STREAMER / TICKER */}
-      <div className="bg-yellow-400 text-emerald-950 font-bold text-sm select-none border-b border-yellow-500 overflow-hidden py-2.5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 gap-4">
-          <div className="flex items-center gap-2 bg-emerald-950 text-yellow-400 px-3 py-1 rounded text-xs shrink-0 tracking-wider font-extrabold uppercase">
-            <Megaphone className="w-3.5 h-3.5 text-yellow-400" />
-            <span className="hidden sm:inline">{language === 'en' ? 'LATEST' : 'اعلانات'}</span>
-          </div>
-          <div className="w-full overflow-hidden relative">
-            <div className="inline-block animate-marquee whitespace-nowrap pl-4 tracking-wide font-sans text-sm">
-              {announcementMsg} &nbsp;&nbsp;&bull;&nbsp;&nbsp; {t('verifyNotice')} &nbsp;&nbsp;&bull;&nbsp;&nbsp; 🇵🇰 🤝 🇴🇲 {t('appSlogan')}
+      {/* C. Dynamic Sponsor Billboard Carousel (Satisfies Sponsor rules) */}
+      {currentAd && (
+        <div className="bg-slate-900 border-b border-amber-500/20 py-3.5 px-4 overflow-hidden relative">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-xs">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <span className="bg-amber-400/10 border border-amber-400/30 text-amber-400 px-2 py-0.5 rounded text-[9px] font-mono font-bold tracking-widest uppercase shrink-0">
+                Official Sponsor
+              </span>
+              <p className="text-slate-100 font-bold tracking-wide">
+                <span className="text-amber-400 underline">{currentAd.sponsorName}</span>: {' '}
+                {lang === 'en' && currentAd.tagline}
+                {lang === 'ur' && currentAd.UrduTagline}
+                {lang === 'ps' && currentAd.PashtoTagline}
+              </p>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 🟢 MAIN NAVIGATION BAR */}
-      <nav className="glass-nav sticky top-0 z-40 transition-all duration-150 shadow-xl">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-14 overflow-x-auto no-scrollbar scroll-smooth">
-            <div className="flex space-x-1 sm:space-x-2 md:space-x-3 shrink-0 py-1.5">
-              {[
-                { id: 'home', label: t('navHome'), icon: Home },
-                { id: 'register', label: t('navRegister'), icon: UserPlus },
-                { id: 'reports', label: t('navReports'), icon: AlertTriangle, count: totals.activeEmergencies },
-                { id: 'donations', label: t('navDonations'), icon: Heart },
-                { id: 'elections', label: t('navElections'), icon: Vote },
-                { id: 'cabinet', label: t('navCabinet'), icon: Users },
-                { id: 'admin', label: t('navAdmin'), icon: ShieldCheck, badge: true },
-                { id: 'contact', label: t('navContact'), icon: Mail }
-              ].map((item) => {
-                const IconComponent = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-2 px-3.5 py-2 text-xs md:text-sm font-bold rounded-xl transition-all transform duration-150 whitespace-nowrap shrink-0 relative ${
-                      isActive 
-                        ? 'bg-yellow-400/10 text-yellow-450 shadow-md border border-yellow-400/30' 
-                        : 'text-slate-200 hover:text-yellow-400 hover:bg-white/5'
-                    }`}
-                  >
-                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-yellow-450' : 'text-slate-400'}`} />
-                    <span>{item.label}</span>
-                    {item.count && item.count > 0 ? (
-                      <span className="absolute -top-1 -right-1 bg-rose-600 text-white font-extrabold text-[10px] w-4 h-4 rounded-full flex items-center justify-center animate-bounce">
-                        {item.count}
-                      </span>
-                    ) : null}
-                    {item.badge && item.id === 'admin' && simulatedRole === 'admin' ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* 📢 Full-width Sponsored Advertisement Billboard Slider */}
-      {activeTab === 'home' && (
-        <div className="w-full bg-slate-950/20 border-b border-yellow-500/10 py-6 px-4 md:px-8 shadow-2xl relative z-10">
-          <div className="max-w-7xl mx-auto">
-            <AdBillboard ads={ads} language={language} adminOnlyAds={adminOnlyAds} />
+            <a 
+              href={currentAd.clickUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="bg-slate-100 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded transition duration-200 shrink-0 text-[10px] tracking-wide uppercase shadow"
+            >
+              Visit Sponsor Deal
+            </a>
           </div>
         </div>
       )}
 
-      {/* 🟢 PORTAL CONTENT VIEW WRAPPER */}
-      <main className="grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab + language}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.22, ease: 'easeOut' }}
-          >
-            {/* 🏠 tab 1: HOME/DASHBOARD VIEW */}
-            {activeTab === 'home' && (
-              <div className="space-y-8">
-                {/* 1. Welcoming Hero Segment */}
-                <div className="glass-card p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/5 rounded-bl-full z-0 opacity-45"></div>
-                  <div className="space-y-4 md:flex-1 relative z-10">
-                    <h2 className="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight font-display">
-                      {t('appTitle')}
-                    </h2>
-                    <p className="text-slate-300 leading-relaxed text-sm md:text-base">
-                      {t('welcomeMessage')}
-                    </p>
-                    <div className="flex gap-3 flex-wrap">
-                      <button 
-                        onClick={() => setActiveTab('register')}
-                        className="bg-yellow-450 hover:bg-yellow-500 text-slate-950 font-black text-xs px-5 py-3 rounded-xl transition shadow-md flex items-center gap-2 cursor-pointer active:scale-98"
-                      >
-                        <UserPlus className="w-4 h-4" /> {t('navRegister')}
-                      </button>
-                      <button 
-                        onClick={() => setActiveTab('donations')}
-                        className="bg-slate-950/70 hover:bg-[#0f193c] text-yellow-400 border border-yellow-400/30 hover:border-yellow-400 font-bold text-xs px-5 py-3 rounded-xl transition flex items-center gap-2 cursor-pointer active:scale-98"
-                      >
-                        <Heart className="w-4 h-4 text-rose-500" /> Support Welfare Fund
-                      </button>
-                    </div>
-                  </div>
+      {/* D. Main Action Banners feedback */}
+      {feedback && (
+        <div className="max-w-7xl mx-auto mt-6 px-4">
+          <div className="bg-emerald-950/70 border-2 border-emerald-500 rounded-xl p-4 text-emerald-100 text-sm font-medium flex items-center gap-3">
+            <span className="flex h-3 w-3 relative shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            {feedback}
+          </div>
+        </div>
+      )}
 
-                  <div className="w-full md:w-80 space-y-3.5 shrink-0 z-10 bg-slate-950/70 p-5 rounded-2xl border border-yellow-400/20 shadow-md">
-                    <h4 className="text-xs uppercase font-extrabold tracking-wider text-yellow-400 flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-yellow-400" /> Welfare Scope Benefits
-                    </h4>
-                    <ul className="text-xs text-slate-300 space-y-2 mt-2 leading-relaxed">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
-                        <span><strong>Meyyat Body Transit</strong>: Instant cost compensation and support (500 OMR dispatch).</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
-                        <span><strong>Direct Consular backings</strong>: Fast-track labor permits, passport renewals & legal aid.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
-                        <span><strong>Blood & Casualty Drives</strong>: 124+ registered blood donors directory matching emergency calls.</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+      {/* E. Modular Navigation and Screen Shell Grid */}
+      <main className="max-w-7xl mx-auto mt-8 px-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Left Hand Navigation bar (Desktop) */}
+        <div className="lg:col-span-3 space-y-4">
+          <div className="bg-slate-900 border-2 border-slate-850 rounded-2xl p-4 shadow-xl space-y-1">
+            <p className="text-slate-400 text-[10px] font-mono uppercase tracking-widest font-bold px-3 pb-2 border-b border-slate-800">
+              Cabinet Portal Index
+            </p>
+            
+            <button 
+              onClick={() => setActiveTab('dashboard')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold tracking-wide transition duration-150 cursor-pointer ${activeTab === 'dashboard' ? 'bg-amber-500 text-slate-950' : 'text-slate-200 hover:bg-slate-950 hover:text-white'}`}
+            >
+              <LayoutDashboard className="w-4 h-4" /> {t(lang, 'navHome')}
+            </button>
 
-                {/* 1.5 Digital Welfare Membership Card Badge */}
-                <div className="space-y-4">
-                  <div className="border-l-4 border-emerald-700 pl-4 py-1">
-                    <h3 className="text-lg md:text-xl font-bold font-display text-gray-900 leading-normal">
-                      {simulatedRole === 'member' ? 'Your Digital Welfare Membership Badge (اپنا ڈیجیٹل کارڈ)' : 'Verified Digital Member ID Portal (تصدیقی کارڈ سروس)'}
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      {simulatedRole === 'member' 
-                        ? 'Your credentials are of active verified status. You can preview, 3D flip, print, or download your security card below.' 
-                        : 'Secure registry lookup for Pakistani expats and laborers. Check identity credentials, print badges, or verify voting power.'}
-                    </p>
-                  </div>
+            <button 
+              onClick={() => setActiveTab('directory')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold tracking-wide transition duration-150 cursor-pointer ${activeTab === 'directory' ? 'bg-amber-500 text-slate-950' : 'text-slate-200 hover:bg-slate-950 hover:text-white'}`}
+            >
+              <Users className="w-4 h-4" /> {t(lang, 'navMembers')}
+            </button>
 
-                  <DigitalMemberId 
-                    member={selectedIDMember || currentMember || members.find(m => m.status === 'approved') || members[0]} 
-                    showLookupFeature={true}
-                    allApprovedMembers={members}
-                    onSelectMember={(m) => setSelectedIDMember(m)}
+            <button 
+              onClick={() => setActiveTab('register')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold tracking-wide transition duration-150 cursor-pointer ${activeTab === 'register' ? 'bg-amber-500 text-slate-950' : 'text-slate-200 hover:bg-slate-950 hover:text-white'}`}
+            >
+              <PlusCircle className="w-4 h-4" /> {t(lang, 'navRegister')}
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('emergency')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold tracking-wide transition duration-150 cursor-pointer ${activeTab === 'emergency' ? 'bg-amber-500 text-slate-950' : 'text-slate-200 hover:bg-slate-950 hover:text-white'}`}
+            >
+              <Activity className="w-4 h-4" /> {t(lang, 'navEmergency')}
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('donations')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold tracking-wide transition duration-150 cursor-pointer ${activeTab === 'donations' ? 'bg-amber-500 text-slate-950' : 'text-slate-200 hover:bg-slate-950 hover:text-white'}`}
+            >
+              <Heart className="w-4 h-4" /> {t(lang, 'navDonations')}
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('elections')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold tracking-wide transition duration-150 cursor-pointer ${activeTab === 'elections' ? 'bg-amber-500 text-slate-950' : 'text-slate-200 hover:bg-slate-950 hover:text-white'}`}
+            >
+              <Vote className="w-4 h-4" /> {t(lang, 'navElections')}
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('bulletins')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold tracking-wide transition duration-150 cursor-pointer ${activeTab === 'bulletins' ? 'bg-amber-500 text-slate-950' : 'text-slate-200 hover:bg-slate-950 hover:text-white'}`}
+            >
+              <Newspaper className="w-4 h-4" /> {t(lang, 'navNews')}
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('contact')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold tracking-wide transition duration-150 cursor-pointer ${activeTab === 'contact' ? 'bg-amber-500 text-slate-950' : 'text-slate-200 hover:bg-slate-950 hover:text-white'}`}
+            >
+              <Send className="w-4 h-4" /> {t(lang, 'navContact')}
+            </button>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-850 rounded-2xl p-4 text-xs space-y-2">
+            <p className="font-bold text-slate-100 flex items-center gap-1">
+              <HelpCircle className="w-4 h-4 text-amber-400" /> Human Accessibility
+            </p>
+            <p className="text-slate-300">This interface features rich styling with maximum color contrast. Every form label is paired with language selectors to facilitate reading for our laborship workforce.</p>
+          </div>
+        </div>
+
+        {/* Right Active View Shell (Responsive space layout) */}
+        <div className="lg:col-span-9 space-y-6">
+          
+          {/* TAB 1: Analytical WELFARE COVER DASHBOARD */}
+          {activeTab === 'dashboard' && (
+            <CommunityDashboard members={members} donations={donations} reports={reports} />
+          )}
+
+          {/* TAB 2: REGISTERED MEMBERS DIRECTORY TABLE */}
+          {activeTab === 'directory' && (
+            <AdminMembersDirectory 
+              members={members} 
+              donations={donations} 
+              activeRole={activeRole} 
+              language={lang}
+              onApproveMember={handleApproveMemberOnDB}
+              onRejectMember={handleRejectMemberOnDB}
+              onApproveDonation={handleApproveDonationOnDB}
+              onRejectDonation={handleRejectDonationOnDB}
+              onDeleteMember={handleDeleteMemberOnDB}
+            />
+          )}
+
+          {/* TAB 3: WELFARE CARD REGISTRATION APPLICATION */}
+          {activeTab === 'register' && (
+            <div className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+              <div>
+                <h3 className="text-xl font-display font-extrabold text-slate-50 flex items-center gap-2">
+                  <PlusCircle className="text-amber-400 w-5.5 h-5.5" />
+                  {t(lang, 'regFormTitle')}
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  {t(lang, 'regFormSubtitle')}
+                </p>
+              </div>
+
+              <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 gap-5 font-sans">
+                <div className="space-y-1.5 col-span-1 md:col-span-2">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold">{t(lang, 'inputFullName')} <span className="text-red-500">*</span></label>
+                  <input 
+                    type="text"
+                    required
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-50 px-3.5 py-2.5 rounded-lg outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                    placeholder="e.g. Khan Wali Shah"
                   />
                 </div>
 
-                {/* 2. Interactive High-Crafstmanship Stats Widgets */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between hover:border-emerald-300 transition-all">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 font-semibold text-xs md:text-sm uppercase tracking-wider">{t('totalMembers')}</span>
-                      <div className="w-10 h-10 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center border border-emerald-200 shadow-2xs">
-                        <Users className="w-5 h-5" />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <span className="text-3xl font-extrabold text-slate-900 tracking-tight">{totals.membersCount}</span>
-                      <span className="text-xs text-emerald-600 font-medium ml-2 block mt-1.5">
-                        &bull; Active verified voting cards
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between hover:border-emerald-300 transition-all">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 font-semibold text-xs md:text-sm uppercase tracking-wider">{t('totalDonations')}</span>
-                      <div className="w-10 h-10 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center border border-amber-200 shadow-2xs">
-                        <Coins className="w-5 h-5" />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <span className="text-3xl font-extrabold text-slate-900 tracking-tight">{totals.treasuryBalance} OMR</span>
-                      <span className="text-xs text-amber-700 font-medium ml-2 block mt-1.5">
-                        &bull; Audited live bank budget reserve
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs relative overflow-hidden flex flex-col justify-between hover:border-emerald-300 transition-all">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 font-semibold text-xs md:text-sm uppercase tracking-wider">{t('activeReports')}</span>
-                      <div className="w-10 h-10 bg-rose-50 text-rose-700 rounded-lg flex items-center justify-center border border-rose-200 shadow-2xs">
-                        <AlertTriangle className="w-5 h-5" />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <span className="text-3xl font-extrabold text-slate-900 tracking-tight">{totals.activeEmergencies} Incident{totals.activeEmergencies !== 1 ? 's' : ''}</span>
-                      <span className="text-xs text-rose-600 font-medium ml-2 block mt-1.5">
-                        &bull; Casualty response alerts pending assistance
-                      </span>
-                    </div>
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold">{t(lang, 'inputPhone')}</label>
+                  <input 
+                    type="text"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-50 px-3.5 py-2.5 rounded-lg outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                    placeholder="e.g. +968 9244 5678"
+                  />
                 </div>
 
-                {/* 📊 Live Community Insights Dashboard (Recharts pie/bar charts) */}
-                <CommunityDashboard 
-                  members={members} 
-                  donations={donations} 
-                  language={language} 
-                  isAdmin={simulatedRole === 'admin'}
-                />
-
-                {/* 3. News Feed and Embassy Details Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  {/* News timeline list */}
-                  <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 p-6 shadow-xs space-y-6">
-                    <h3 className="text-lg font-bold text-gray-900 font-display flex items-center gap-2.5 pb-2.5 border-b border-gray-100">
-                      <Layers className="w-5 h-5 text-emerald-700" />
-                      {t('latestNews')}
-                    </h3>
-                    <div className="space-y-6">
-                      {news.map((item, index) => (
-                        <div key={item.id} className="relative flex gap-4">
-                          {/* Left date and point design */}
-                          <div className="flex flex-col items-center shrink-0">
-                            <span className="text-xs font-bold text-gray-400 font-mono w-20 text-center">
-                              {item.date}
-                            </span>
-                            <div className="w-3 h-3 rounded-full bg-emerald-600 border-2 border-white ring-2 ring-emerald-150 mt-1.5"></div>
-                            {index !== news.length - 1 && <div className="w-0.5 bg-gray-200 grow my-1 mt-2"></div>}
-                          </div>
-                          {/* Text payload */}
-                          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200/60 flex-1 space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-sm font-bold text-gray-900">
-                                {item.title}
-                              </h4>
-                              <span className={`text-[9px] font-extrabold px-2 py-0.5 uppercase tracking-wider rounded-full ${
-                                item.category === 'event' ? 'bg-amber-100 text-amber-800' :
-                                item.category === 'announcement' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'
-                              }`}>
-                                {item.category}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-600 leading-relaxed">
-                              {item.content}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Consular Support & Pakistani Embassy details */}
-                  <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 p-6 shadow-xs space-y-6">
-                    <h3 className="text-lg font-bold text-slate-950 font-display flex items-center gap-2 border-b border-gray-100 pb-2.5">
-                      <Building2 className="w-5 h-5 text-emerald-700" />
-                      {t('embassySection')}
-                    </h3>
-                    <div className="space-y-4">
-                      {/* Embassy location photo placeholder */}
-                      <div className="h-44 rounded-xl bg-slate-900 text-white flex items-center justify-center p-4 text-center relative overflow-hidden">
-                        <img 
-                          src="https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&q=80&w=400" 
-                          alt="Pakistan Embassy Mascot" 
-                          className="absolute inset-0 w-full h-full object-cover opacity-30 select-none pointer-events-none"
-                        />
-                        <div className="relative z-10 space-y-1">
-                          <h4 className="text-sm font-extrabold tracking-wide uppercase text-yellow-300">
-                            Embassy of Pakistan, Muscat
-                          </h4>
-                          <p className="text-[11px] text-gray-200">
-                            Official welfare desk collaborations for verified cabinet members.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                        <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider">
-                          {t('embassyInfo')}
-                        </h4>
-                        <div className="space-y-2 text-xs text-gray-700 leading-relaxed">
-                          <p className="flex items-start gap-2.5">
-                            <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                            <span>{t('embassyAddress')}</span>
-                          </p>
-                          <hr className="border-gray-200/50" />
-                          <p className="flex items-center gap-2.5">
-                            <Phone className="w-4 h-4 text-emerald-700 shrink-0" />
-                            <span>{t('embassyTel')}</span>
-                          </p>
-                          <hr className="border-gray-200/50" />
-                          <p className="flex items-center gap-2.5">
-                            <Mail className="w-4 h-4 text-emerald-700 shrink-0" />
-                            <span>{t('embassyEmail')}</span>
-                          </p>
-                          <hr className="border-gray-200/50" />
-                          <p className="flex items-center gap-2.5">
-                            <Clock className="w-4 h-4 text-emerald-700 shrink-0" />
-                            <span>{t('embassyHours')}</span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold">{t(lang, 'inputStay')}</label>
+                  <input 
+                    type="text"
+                    value={regStay}
+                    onChange={(e) => setRegStay(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-50 px-3.5 py-2.5 rounded-lg outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                    placeholder="e.g. 5 years"
+                  />
                 </div>
 
-                {/* 4. Upcoming events calendar panel */}
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
-                  <h3 className="text-lg font-bold text-gray-900 font-display flex items-center gap-2.5 pb-2.5 border-b border-gray-100 mb-4">
-                    <Calendar className="w-5 h-5 text-emerald-700" />
-                    {t('upcomingEvents')}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div className="border border-gray-200 p-4 rounded-xl hover:bg-emerald-50/20 transition group">
-                      <span className="text-[10px] uppercase tracking-wider text-emerald-700 font-extrabold">Next Friday</span>
-                      <h4 className="text-sm font-bold text-gray-900 mt-1 uppercase group-hover:text-emerald-800">
-                        Oman Pakhtoon Cultural Dialogues
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-                        Gathering at Barka Municipality Compound to discuss registration, welfare cards, and air transit support updates.
-                      </p>
-                      <div className="flex items-center justify-between text-[11px] text-gray-400 mt-3 border-t border-gray-100 pt-2 font-medium">
-                        <span>🕒 4:30 PM Oman time</span>
-                        <span>📍 Barka, Oman</span>
-                      </div>
-                    </div>
-
-                    <div className="border border-gray-200 p-4 rounded-xl hover:bg-emerald-50/20 transition group">
-                      <span className="text-[10px] uppercase tracking-wider text-emerald-700 font-extrabold">June 18, 2026</span>
-                      <h4 className="text-sm font-bold text-gray-900 mt-1 uppercase group-hover:text-emerald-800">
-                        Welfare Fund General Audit Meet
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-                        Treasury ledger verification with finance secretary Ikram Bacha. Transparent spreadsheet review open to all.
-                      </p>
-                      <div className="flex items-center justify-between text-[11px] text-gray-400 mt-3 border-t border-gray-100 pt-2 font-medium">
-                        <span>🕒 8:00 PM Oman time</span>
-                        <span>📍 Ruwi, Muscat Office</span>
-                      </div>
-                    </div>
-
-                    <div className="border border-gray-200 p-4 rounded-xl hover:bg-emerald-50/20 transition group">
-                      <span className="text-[10px] uppercase tracking-wider text-emerald-700 font-extrabold">July 02, 2026</span>
-                      <h4 className="text-sm font-bold text-gray-900 mt-1 uppercase group-hover:text-emerald-800">
-                        Regional Blood Donor Drive
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-                        In collaboration with Khoula Hospital, building robust blood transfusion lists for labor accidents.
-                      </p>
-                      <div className="flex items-center justify-between text-[11px] text-gray-400 mt-3 border-t border-gray-100 pt-2 font-medium">
-                        <span>🕒 9:00 AM Oman time</span>
-                        <span>📍 Salalah Medical Senter</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 📝 tab 2: MEMBERSHIP REGISTRATION */}
-            {activeTab === 'register' && (
-              <div className="max-w-4xl mx-auto space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-xs space-y-6">
-                  <div className="border-b border-gray-100 pb-4">
-                    <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 font-display flex items-center gap-2">
-                      <UserPlus className="w-6 h-6 text-emerald-700" />
-                      {t('regHeadline')}
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {t('regDesc')}
-                    </p>
-                  </div>
-
-                  {/* Feedback on submission success */}
-                  {regFeedback && (
-                    <div className="p-4 rounded-xl bg-emerald-50 text-emerald-800 border-2 border-emerald-200 flex items-start gap-3 animate-float text-xs md:text-sm">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <strong className="font-bold">Registration Success!</strong>
-                        <p>{regFeedback}</p>
-                        <p className="text-[11px] text-emerald-600 italic mt-1 bg-white inline-block px-2 py-0.5 rounded shadow-2xs">
-                          {t('regProgress')}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Let the user review their registration profile if simulated as static member */}
-                  {simulatedRole === 'member' ? (
-                    <div className="bg-emerald-500/5 p-6 rounded-2xl border border-emerald-500/20 space-y-4">
-                      <div className="flex items-center gap-4">
-                        <img 
-                          src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120&h=120" 
-                          alt="Member profile avatar" 
-                          className="w-16 h-16 rounded-full object-cover border-2 border-emerald-600"
-                        />
-                        <div>
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                            Active Approved Member
-                          </span>
-                          <h4 className="text-base font-bold text-gray-900 mt-0.5">Amjad Ali Yousafzai</h4>
-                          <p className="text-xs text-gray-500">Meyyat Fund Participant ID: OPC-7822-M</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs pt-2 border-t border-emerald-500/10">
-                        <div>
-                          <span className="text-gray-400 block font-medium">Hometown PK</span>
-                          <span className="font-extrabold text-emerald-950">Swat District</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block font-medium">Oman Location</span>
-                          <span className="font-extrabold text-emerald-950">Nizwa, Oman</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block font-medium">Oman Cell No.</span>
-                          <span className="font-extrabold text-emerald-950">+968 9481 0291</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block font-medium">Employer Sponsor</span>
-                          <span className="font-extrabold text-emerald-950">Al-Ansar Infrastructure</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block font-medium">Blood Group</span>
-                          <span className="font-extrabold text-emerald-950 bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-mono font-bold">O+ Positive</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block font-medium">Welfare Fee</span>
-                          <span className="font-extrabold text-emerald-950">5 OMR Verified Paid</span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <form onSubmit={submitMemberRegistration} className="space-y-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('fullName')} *</label>
-                        <input 
-                          type="text" 
-                          required
-                          value={regName}
-                          onChange={e => setRegName(e.target.value)}
-                          placeholder="e.g. Haji Sher Zaman" 
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('phoneNumber')} *</label>
-                        <input 
-                          type="tel" 
-                          required
-                          value={regPhone}
-                          onChange={e => setRegPhone(e.target.value)}
-                          placeholder="e.g. +968 9911 1870" 
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white font-mono"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('emailAddress')}</label>
-                        <input 
-                          type="email" 
-                          value={regEmail}
-                          onChange={e => setRegEmail(e.target.value)}
-                          placeholder="e.g. name@domain.com" 
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('districtOrProvince')}</label>
-                        <input 
-                          type="text" 
-                          value={regDistrict}
-                          onChange={e => setRegDistrict(e.target.value)}
-                          placeholder="e.g. Swat, Mardan, Quetta" 
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('bloodGroup')}</label>
-                        <select 
-                          value={regBlood}
-                          onChange={e => setRegBlood(e.target.value)}
-                          className="w-full text-xs md:text-sm px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white font-mono font-bold"
-                        >
-                          {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
-                            <option key={bg} value={bg}>{bg}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('currentCityInOman')}</label>
-                        <input 
-                          type="text" 
-                          value={regCity}
-                          onChange={e => setRegCity(e.target.value)}
-                          placeholder="e.g. Muscat, Salalah, Sohar" 
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('employerName')}</label>
-                        <input 
-                          type="text" 
-                          value={regEmployer}
-                          onChange={e => setRegEmployer(e.target.value)}
-                          placeholder="e.g. Al-Watan Builders Co." 
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('emergencyContact')} *</label>
-                      <input 
-                        type="text" 
-                        required
-                        value={regEmergency}
-                        onChange={e => setRegEmergency(e.target.value)}
-                        placeholder="e.g. Farman Ali Yousafzai (Brother) - +92 345 992019" 
-                        className="w-full text-xs md:text-sm px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                      />
-                    </div>
-
-                    <div className="space-y-2 border-2 border-dashed border-gray-200 p-4.5 rounded-xl bg-gray-50">
-                      <label className="text-xs font-extrabold text-gray-700 uppercase tracking-wider block">
-                        {t('photoProof')}
-                      </label>
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100"
-                      />
-                      <p className="text-[10px] text-gray-400">
-                        Upload a scan or picture of passport/residency card. Simulated uploads will generate matching base64 representations in localStorage.
-                      </p>
-                      {regPhoto && (
-                        <div className="mt-3 flex items-center gap-2 bg-emerald-50 p-2.5 rounded border border-emerald-150">
-                          <Check className="w-4 h-4 text-emerald-700" />
-                          <span className="text-xs text-emerald-800 font-semibold">Image buffered for upload</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <button 
-                      type="submit"
-                      className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs tracking-wider uppercase py-3.5 rounded-xl transition shadow-xs cursor-pointer font-sans"
-                    >
-                      {t('submitRegistration')}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* 🚨 tab 3: EMERGENCY CELL */}
-            {activeTab === 'reports' && (
-              <div className="space-y-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                  {/* Emergency reporter Form */}
-                  <div className="lg:col-span-6 bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-xs space-y-6">
-                    <div className="border-b border-gray-100 pb-4">
-                      <h2 className="text-xl font-extrabold text-gray-900 font-display flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 text-rose-600" />
-                        {t('reportHeader')}
-                      </h2>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {t('reportIntro')}
-                      </p>
-                    </div>
-
-                    {repFeedback && (
-                      <div className="p-4 rounded-xl bg-rose-50 text-rose-900 border border-rose-200 flex items-start gap-2.5 text-xs animate-float">
-                        <ShieldAlert className="w-5 h-5 text-rose-700 shrink-0 mt-0.5" />
-                        <div>
-                          <strong className="font-bold">Urgent Dispatch Dispatched!</strong>
-                          <p>{repFeedback}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <form onSubmit={submitEmergencyReport} className="space-y-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('reportType')} *</label>
-                        <select
-                          value={repType}
-                          onChange={e => setRepType(e.target.value as any)}
-                          className="w-full text-xs md:text-sm px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white font-semibold"
-                        >
-                          <option value="injury">{t('injuryType')}</option>
-                          <option value="death">{t('deathType')}</option>
-                          <option value="lost_passport">{t('passportType')}</option>
-                          <option value="other">{t('otherType')}</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1 col-span-2">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('details')} *</label>
-                        <textarea
-                          required
-                          rows={4}
-                          value={repDesc}
-                          onChange={e => setRepDesc(e.target.value)}
-                          placeholder="e.g. Worker injured, admitted to Khoula medical unit. Demanding medical translator and family support guidance..."
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                        ></textarea>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('incidentDate')}</label>
-                          <input 
-                            type="date"
-                            value={repDate}
-                            onChange={e => setRepDate(e.target.value)}
-                            className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            {language === 'ur' ? 'حادثہ کا وقت' : language === 'ps' ? 'د پېښې وخت' : 'Incident Time'}
-                          </label>
-                          <input 
-                            type="time"
-                            value={repTime}
-                            onChange={e => setRepTime(e.target.value)}
-                            className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white font-mono"
-                          />
-                          <span className="text-[10px] text-gray-400 block font-normal leading-tight">Defaults to current time</span>
-                        </div>
-
-                        <div className="space-y-1 col-span-1">
-                          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('incidentLocation')} *</label>
-                          <input 
-                            type="text"
-                            required
-                            value={repLocation}
-                            onChange={e => setRepLocation(e.target.value)}
-                            placeholder="e.g. Khoula Hospital / Barka Site"
-                            className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('contactBack')} *</label>
-                        <input 
-                          type="tel"
-                          required
-                          value={repContact}
-                          onChange={e => setRepContact(e.target.value)}
-                          placeholder="e.g. +968 9112 0045"
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white font-mono"
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs tracking-wider uppercase py-3.5 rounded-xl transition cursor-pointer shadow-xs"
-                      >
-                        {t('submitReport')}
-                      </button>
-                    </form>
-                  </div>
-
-                  {/* Active reported events */}
-                  <div className="lg:col-span-6 bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-xs space-y-6">
-                    <h3 className="text-lg font-bold text-slate-900 font-display flex items-center gap-2 border-b border-gray-100 pb-2.5">
-                      <ShieldAlert className="w-5 h-5 text-rose-600 animate-pulse" />
-                      {t('reportActive')}
-                    </h3>
-                    <div className="space-y-4 max-h-[550px] overflow-y-auto pr-1">
-                      {reports.map((rep) => (
-                        <div key={rep.id} className="border border-gray-200 rounded-xl p-4.5 space-y-3 shadow-2xs hover:border-rose-200 transition bg-linear-to-br from-white to-gray-50/50">
-                          <div className="flex items-center justify-between gap-2.5 flex-wrap">
-                            <span className="text-[10px] font-extrabold uppercase bg-slate-900 text-white px-2.5 py-0.5 rounded-sm tracking-wider">
-                              {rep.type === 'death' ? t('deathType') : rep.type === 'injury' ? t('injuryType') : rep.type === 'lost_passport' ? t('passportType') : t('otherType')}
-                            </span>
-                            
-                            {/* Badges status */}
-                            <span className={`text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                              rep.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                              rep.status === 'verified' ? 'bg-emerald-100 text-emerald-800 animate-pulse' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {rep.status === 'pending' ? <Clock4 className="w-3 h-3" /> : rep.status === 'verified' ? <CheckCircle2 className="w-3 h-3 animate-pulse" /> : <Check className="w-3 h-3" />}
-                              {rep.status === 'pending' ? 'Awaiting Dispatch' : rep.status === 'verified' ? 'Active Cabinet Aid' : 'Case Resolved'}
-                            </span>
-                          </div>
-
-                          <p className="text-xs text-gray-700 leading-relaxed font-sans font-medium">
-                            {rep.description}
-                          </p>
-
-                          <div className="grid grid-cols-2 gap-3 text-[11px] pt-3 border-t border-gray-100 font-medium text-gray-500 items-center">
-                            <div>
-                              <span>Date: <strong className="text-slate-800">{rep.date}</strong>{rep.time && <span className="text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-150 font-mono font-bold ml-1.5 text-[10px]/none inline-flex items-center gap-0.5" title="Submission Time">⏱️ {rep.time}</span>}</span>
-                            </div>
-                            <div>
-                              <span>Loc: <strong className="text-slate-800">{rep.location}</strong></span>
-                            </div>
-                            <div className="col-span-2 flex items-center justify-between gap-2.5 bg-slate-50 border border-gray-200/60 p-2.5 rounded-xl">
-                              <div className="min-w-0">
-                                <span className="text-[10px] text-gray-400 block uppercase font-black tracking-wider leading-none mb-1">Callback Desk</span>
-                                <strong className="text-slate-900 font-mono select-all text-xs truncate block">{rep.contactInfo}</strong>
-                              </div>
-                              <a
-                                href={getWhatsAppLink(rep.contactInfo, `Regarding Emergency Case: ${rep.description.substring(0, 50)}...`)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20ba5a] text-white text-[10px] font-black px-3 py-1.5 rounded-lg shadow-3xs transition-all hover:-translate-y-0.5 cursor-pointer shrink-0"
-                                title="Contact reporter via WhatsApp"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.864.001-2.641-1.019-5.123-2.87-6.979C16.612 1.906 14.13 .887 11.5 1.054c-5.438 0-9.863 4.414-9.866 9.865-.001 1.745.543 3.447 1.488 4.966l-.99 3.619 3.73-.978zM15.842 13.91c-.328-.164-1.94-.958-2.24-1.069-.302-.11-.521-.164-.741.164-.219.328-.85 1.069-1.042 1.288-.19.219-.384.246-.712.083-1.094-.547-1.838-.973-2.557-2.212-.178-.308-.178-.514.07-.736.143-.127.329-.384.494-.575.164-.191.219-.328.329-.548.11-.219.055-.411-.027-.575-.082-.164-.74-1.78-.985-2.383-.242-.591-.521-.52-.741-.52-.218-.014-.469-.014-.711-.014-.242 0-.64.091-.975.465-.335.374-1.28 1.258-1.28 3.064 0 1.806 1.312 3.551 1.493 3.797.181.246 2.585 3.948 6.262 5.534.874.377 1.558.602 2.088.771.88.279 1.68.239 2.312.145.705-.105 1.94-.793 2.213-1.52.274-.726.274-1.348.192-1.48-.083-.132-.302-.219-.63-.383z"/>
-                                </svg>
-                                <span>WhatsApp Support</span>
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold">{t(lang, 'inputOmaniId')} <span className="text-red-500">*</span></label>
+                  <input 
+                    type="text"
+                    required
+                    value={regOmaniId}
+                    onChange={(e) => setRegOmaniId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-50 px-3.5 py-2.5 rounded-lg outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                    placeholder="e.g. 12345678"
+                  />
                 </div>
 
-                {/* 🟢 Floating WhatsApp Support Action Trigger relative to Emergency Cell tab */}
-                <div className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-40">
-                  <a
-                    href={getWhatsAppLink(repContact || '96891120045', `AoA Pakhtoon Council Oman, I am submitting/inquiring about emergency assistance. Contact callback: ${repContact || 'None'}`)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-white font-extrabold text-xs px-5 py-3.5 rounded-full shadow-2xl transition hover:scale-105 active:scale-95 border-2 border-white/60 group cursor-pointer animate-pulse"
-                    title={repContact ? `WhatsApp Contact: ${repContact}` : "WhatsApp Support Assist Line"}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold">{t(lang, 'inputPassport')} <span className="text-red-500">*</span></label>
+                  <input 
+                    type="text"
+                    required
+                    value={regPassport}
+                    onChange={(e) => setRegPassport(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-50 px-3.5 py-2.5 rounded-lg outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                    placeholder="e.g. PC7788123"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold">{t(lang, 'inputProfession')}</label>
+                  <input 
+                    type="text"
+                    value={regProfession}
+                    onChange={(e) => setRegProfession(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-slate-50 px-3.5 py-2.5 rounded-lg outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                    placeholder="e.g. Scaffolding Builder"
+                  />
+                </div>
+
+                <div className="space-y-1.5 flex items-center gap-3 pt-6">
+                  <input 
+                    type="checkbox"
+                    id="checkbox-eligibility"
+                    checked={regWelfareEligible}
+                    onChange={(e) => setRegWelfareEligible(e.target.checked)}
+                    className="w-4 h-4 accent-amber-500 cursor-pointer"
+                  />
+                  <label htmlFor="checkbox-eligibility" className="text-xs text-slate-100 font-semibold cursor-pointer select-none">
+                    {t(lang, 'inputWelfareEligible')}
+                  </label>
+                </div>
+
+                <div className="col-span-1 md:col-span-2 pt-4">
+                  <button 
+                    type="submit"
+                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-3 rounded-lg shadow-lg cursor-pointer transition flex items-center justify-center gap-2"
                   >
-                    <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.864.001-2.641-1.019-5.123-2.87-6.979C16.612 1.906 14.13 .887 11.5 1.054c-5.438 0-9.863 4.414-9.866 9.865-.001 1.745.543 3.447 1.488 4.966l-.99 3.619 3.73-.978zM15.842 13.91c-.328-.164-1.94-.958-2.24-1.069-.302-.11-.521-.164-.741.164-.219.328-.85 1.069-1.042 1.288-.19.219-.384.246-.712.083-1.094-.547-1.838-.973-2.557-2.212-.178-.308-.178-.514.07-.736.143-.127.329-.384.494-.575.164-.191.219-.328.329-.548.11-.219.055-.411-.027-.575-.082-.164-.74-1.78-.985-2.383-.242-.591-.521-.52-.741-.52-.218-.014-.469-.014-.711-.014-.242 0-.64.091-.975.465-.335.374-1.28 1.258-1.28 3.064 0 1.806 1.312 3.551 1.493 3.797.181.246 2.585 3.948 6.262 5.534.874.377 1.558.602 2.088.771.88.279 1.68.239 2.312.145.705-.105 1.94-.793 2.213-1.52.274-.726.274-1.348.192-1.48-.083-.132-.302-.219-.63-.383z"/>
-                    </svg>
-                    <span>
-                      {repContact 
-                        ? `${language === 'ur' ? 'واٹس ایپ رابطہ' : language === 'ps' ? 'واټساپ اړیکه' : 'WhatsApp Callback'}: ${repContact}` 
-                        : `${language === 'ur' ? 'واٹس ایپ مدد' : language === 'ps' ? 'واټساپ ملاتړ' : 'WhatsApp Support'}`}
-                    </span>
-                  </a>
+                    <Check className="w-4 h-4" /> {t(lang, 'submitBtn')}
+                  </button>
                 </div>
-              </div>
-            )}
+              </form>
+            </div>
+          )}
 
-            {/* 💰 tab 4: WELFARE FUND & TRANSPARENT LEDGER */}
-            {activeTab === 'donations' && (
-              <div className="space-y-8">
-                {/* Intro, bank info & Logging form */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                  {/* Left side: Account card & receipt submission */}
-                  <div className="lg:col-span-7 space-y-6">
-                    <div className="bg-emerald-900 text-white rounded-2xl p-6 shadow-sm border-2 border-yellow-300 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-300 rounded-bl-full z-0 opacity-10"></div>
-                      <div className="space-y-3 relative z-10">
-                        <span className="text-[10px] bg-yellow-400 text-emerald-950 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
-                          Central OMR Account Information
-                        </span>
-                        <h3 className="text-xl font-bold font-display text-yellow-300">
-                          {t('bankInfoCard')}
-                        </h3>
-                        <p className="text-xs text-emerald-100 leading-relaxed">
-                          {t('donIntro')}
-                        </p>
-                        
-                        {/* Bank direct routing detail copyable */}
-                        <div className="bg-emerald-950/60 p-4 rounded-xl border border-emerald-700/60 space-y-2 mt-4">
-                          <p className="text-xs tracking-wide">
-                            🏛️ Bank: <strong>{t('bankName')}</strong>
-                          </p>
-                          <p className="text-xs tracking-wide">
-                            💳 {t('accountNumber')}
-                          </p>
-                          <p className="text-xs tracking-wide">
-                            👤 {t('accountHolder')}
-                          </p>
-                          <hr className="border-emerald-800/80 my-2" />
-                          <p className="text-xs text-yellow-200">
-                            📱 {t('mobileTransferNum')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Log donation box */}
-                    <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-xs">
-                      <h4 className="text-base font-extrabold text-slate-900 border-b border-gray-100 pb-2.5 mb-4 uppercase tracking-wide">
-                        {t('logDonation')}
-                      </h4>
-
-                      {donFeedback && (
-                        <div className="p-4 rounded-xl bg-emerald-50 text-emerald-800 border-2 border-emerald-150 mb-4 flex items-center gap-2.5 text-xs animate-float">
-                          <Coins className="w-5 h-5 text-emerald-700" />
-                          <span>{donFeedback}</span>
-                        </div>
-                      )}
-
-                      <form onSubmit={submitDonationLog} className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('donorLabel')} *</label>
-                            <input
-                              type="text"
-                              required
-                              value={donName}
-                              onChange={e => setDonName(e.target.value)}
-                              placeholder="e.g. Amjad Ali or Anonymous" 
-                              className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('amountLabel')} *</label>
-                            <input
-                              type="number"
-                              required
-                              min="0.1"
-                              step="any"
-                              value={donAmount}
-                              onChange={e => setDonAmount(e.target.value)}
-                              placeholder="OMR balance e.g. 15" 
-                              className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white font-mono"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('paymentMode')} *</label>
-                          <div className="grid grid-cols-2 gap-3 mt-1">
-                            <button
-                              type="button"
-                              onClick={() => setDonMethod('bank')}
-                              className={`py-2 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                                donMethod === 'bank' 
-                                  ? 'bg-emerald-600 text-white border-emerald-500' 
-                                  : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-300'
-                              }`}
-                            >
-                              🏦 {t('bankTransfer')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setDonMethod('mobile')}
-                              className={`py-2 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                                donMethod === 'mobile' 
-                                  ? 'bg-emerald-600 text-white border-emerald-500' 
-                                  : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-300'
-                              }`}
-                            >
-                              📱 {t('mobileWallet')}
-                            </button>
-                          </div>
-                        </div>
-
-                        <button
-                          type="submit"
-                          className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs tracking-wider uppercase py-3 rounded-xl transition cursor-pointer"
-                        >
-                          Submit contribution for Verification
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-
-                  {/* Right side: Realtime public transparency ledger */}
-                  <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-xs space-y-6">
-                    <div className="space-y-1 border-b border-gray-100 pb-3">
-                      <h3 className="text-lg font-bold text-slate-900 font-display flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-700" />
-                        {t('publicLedger')}
-                      </h3>
-                      <p className="text-[11px] text-gray-400">
-                        Total funds audit transparency score: 100% (Fully verified by community elders).
-                      </p>
-                    </div>
-
-                    {/* Ledger search */}
-                    <div className="relative">
-                      <Search className="absolute top-1/2 -translate-y-1/2 left-3 w-4 h-4 text-gray-400" />
-                      <input 
-                        type="text"
-                        value={donationSearchQuery}
-                        onChange={e => setDonationSearchQuery(e.target.value)}
-                        placeholder="Search donors, amount, or method..."
-                        className="w-full text-xs pl-9 pr-3 py-2 rounded-lg border border-gray-350 focus:outline-emerald-600"
-                      />
-                    </div>
-
-                    <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                      {filteredDonations.map((don) => (
-                        <div key={don.id} className="p-3 border border-gray-150 rounded-xl flex items-center justify-between text-xs font-medium">
-                          <div className="space-y-0.5">
-                            <span className="text-slate-950 font-bold block">{don.donorName}</span>
-                            <span className="text-[10px] text-gray-400">
-                              {don.date} via {don.method === 'bank' ? 'Bank Muscat' : 'Mobile Pay'}
-                            </span>
-                          </div>
-                          <div className="text-right space-y-1">
-                            <span className="text-emerald-700 font-extrabold text-sm block">
-                              {don.amount} OMR
-                            </span>
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                              don.status === 'verified' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-700'
-                            }`}>
-                              {don.status === 'verified' ? 'Audited' : 'Pending Verification'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      {filteredDonations.length === 0 && (
-                        <p className="text-xs text-gray-400 text-center py-4">No matching records found.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 🗳️ tab 5: CABINET ELECTIONS */}
-            {activeTab === 'elections' && (
-              <div className="max-w-4xl mx-auto space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-xs space-y-6">
-                  <div className="border-b border-gray-100 pb-4 text-center max-w-2xl mx-auto">
-                    <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 font-display inline-flex items-center gap-2">
-                      <Vote className="w-6 h-6 text-emerald-700" />
-                      {t('electionHeader')}
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                      {t('electionIntro')}
-                    </p>
-                  </div>
-
-                  {elections.map((elec) => (
-                    <div key={elec.id} className="border border-emerald-150 rounded-2xl overflow-hidden bg-linear-to-br from-white to-emerald-50/5 p-6 space-y-6 shadow-2xs">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-gray-200/60">
-                        <div>
-                          <span className="bg-emerald-600 text-white font-extrabold tracking-wider uppercase text-[10px] px-2.5 py-0.5 rounded-sm">
-                            Active Cabinet Cycle
-                          </span>
-                          <h3 className="text-base font-bold text-gray-900 mt-1">
-                            {elec.title}
-                          </h3>
-                        </div>
-                        <div className="text-left sm:text-right font-medium text-xs text-gray-500">
-                          Ends on: <strong className="text-gray-900">{elec.endDate}</strong>
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-gray-600 leading-relaxed font-semibold">
-                        🗳️ Description: {elec.description}
-                      </p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                        {elec.candidates.map((cand) => {
-                          const hasVotedThisElection = votedIds.includes(elec.id);
-                          return (
-                            <div key={cand.id} className="border border-gray-250 bg-white rounded-xl p-4 flex flex-col justify-between hover:border-emerald-300 hover:shadow-xs transition">
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-3.5">
-                                  <img 
-                                    src={cand.photoUrl} 
-                                    alt={cand.name} 
-                                    className="w-12 h-12 rounded-full object-cover border-2 border-emerald-600"
-                                  />
-                                  <div>
-                                    <h4 className="text-sm font-bold text-gray-900">{cand.name}</h4>
-                                    <span className="text-[10px] text-gray-400 font-bold block">{cand.role}</span>
-                                  </div>
-                                </div>
-                                <p className="text-xs text-gray-500 leading-relaxed italic">
-                                  "{cand.bio}"
-                                </p>
-                              </div>
-
-                              <div className="mt-5 pt-3.5 border-t border-gray-100 flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                  <span className="text-[10px] text-gray-400 uppercase tracking-wider block">Total Votes</span>
-                                  <span className="text-base font-extrabold text-emerald-800 font-mono">
-                                    {cand.votes} votes
-                                  </span>
-                                </div>
-
-                                <button
-                                  onClick={() => handleVote(elec.id, cand.id)}
-                                  className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition cursor-pointer ${
-                                    hasVotedThisElection 
-                                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed border' 
-                                      : 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                                  }`}
-                                >
-                                  {hasVotedThisElection ? 'Ballot Cast' : t('castVoteBtn')}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                  {elections.length === 0 && (
-                    <p className="text-center text-xs text-gray-400 py-6">{t('noActiveElections')}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 👥 tab 6: CABINET EXECUTIVE DIRECTORY */}
-            {activeTab === 'cabinet' && (
-              <div className="space-y-8">
-                <div className="border-b border-gray-200 pb-4 max-w-2xl">
-                  <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 font-display flex items-center gap-2">
-                    <Users className="w-6 h-6 text-emerald-700" />
-                    {t('cabinetHeader')}
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {t('cabinetIntro')}
+          {/* TAB 4: HUMANITARIAN LIVE DISPATCH CHANNELS */}
+          {activeTab === 'emergency' && (
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+              
+              {/* Left col: Report dynamic form */}
+              <div className="xl:col-span-5 bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div>
+                  <h3 className="text-lg font-display font-bold text-red-400 flex items-center gap-1.5">
+                    <ShieldAlert className="w-5 h-5 animate-pulse" />
+                    Dispatch Welfare Help
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-1">
+                    {t(lang, 'emergencySubtitle')}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {initialCabinet.map((member) => (
-                    <div 
-                      key={member.id} 
-                      className="bg-white rounded-2xl border border-gray-250 p-5 flex flex-col items-center text-center justify-between hover:border-emerald-300 hover:shadow-xs transition h-full space-y-4"
+                <form onSubmit={handleReportEmergency} className="space-y-4 font-sans text-xs">
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'emergencyReporterName')} *</label>
+                    <input 
+                      type="text"
+                      required
+                      value={repName}
+                      onChange={(e) => setRepName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-100 p-2 py-2.5 rounded-lg outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'emergencyReporterPhone')} *</label>
+                    <input 
+                      type="text"
+                      required
+                      value={repPhone}
+                      onChange={(e) => setRepPhone(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-100 p-2 py-2.5 rounded-lg outline-none"
+                      placeholder="WhatsApp contact"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'emergencySeverity')}</label>
+                    <select 
+                      value={repSeverity}
+                      onChange={(e) => setRepSeverity(e.target.value as any)}
+                      className="w-full bg-slate-950 border border-slate-800 font-bold text-slate-100 p-2 rounded-lg"
                     >
-                      <div className="space-y-3.5 flex flex-col items-center">
-                        {/* Profile Pic with custom border */}
-                        <div className="w-20 h-20 rounded-full p-1 border-2 border-emerald-600 bg-emerald-50">
-                          <img 
-                            src={member.photoUrl} 
-                            alt={member.name} 
-                            className="w-full h-full rounded-full object-cover"
-                          />
-                        </div>
+                      <option value="high">{t(lang, 'emergencySeverityHigh')}</option>
+                      <option value="medium">{t(lang, 'emergencySeverityMedium')}</option>
+                      <option value="low">{t(lang, 'emergencySeverityLow')}</option>
+                    </select>
+                  </div>
 
-                        <div>
-                          <span className="bg-yellow-100 text-yellow-800 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                            {member.role}
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'emergencyCategory')}</label>
+                    <select 
+                      value={repCategory}
+                      onChange={(e) => setRepCategory(e.target.value as any)}
+                      className="w-full bg-slate-950 border border-slate-800 font-bold text-slate-100 p-2 rounded-lg"
+                    >
+                      <option value="death">{t(lang, 'emergencyCategoryDeath')}</option>
+                      <option value="accident">{t(lang, 'emergencyCategoryAccident')}</option>
+                      <option value="lost_passport">{t(lang, 'emergencyCategoryPassport')}</option>
+                      <option value="medical_need">{t(lang, 'emergencyCategoryMedical')}</option>
+                      <option value="general">{t(lang, 'emergencyCategoryGeneral')}</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'emergencyLocation')} *</label>
+                    <input 
+                      type="text"
+                      required
+                      value={repLocation}
+                      onChange={(e) => setRepLocation(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-100 p-2 py-2.5 rounded-lg outline-none"
+                      placeholder="e.g. Khoula Hospital"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'emergencyDesc')} *</label>
+                    <textarea 
+                      required
+                      rows={3}
+                      value={repDescription}
+                      onChange={(e) => setRepDescription(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-100 p-2 rounded-lg"
+                      placeholder="Provide specific details..."
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-red-650 hover:bg-red-500 hover:text-slate-950 text-slate-100 font-bold p-3 rounded-lg border border-red-500 cursor-pointer text-xs"
+                  >
+                    {t(lang, 'submitReportBtn')}
+                  </button>
+                </form>
+              </div>
+
+              {/* Right Col: Current Dispatches list */}
+              <div className="xl:col-span-7 bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div>
+                  <h3 className="text-lg font-display font-bold text-slate-100">{t(lang, 'emergencyTitle')}</h3>
+                  <p className="text-xs text-slate-300">Live community disaster tracker. Red indicates high triage priority.</p>
+                </div>
+
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                  {reports.map((rep) => (
+                    <div 
+                      key={rep.id} 
+                      className={`p-4 rounded-xl border transition ${rep.severity === 'high' ? 'bg-red-950/20 border-red-500/55' : 'bg-slate-950 border-slate-850'}`}
+                    >
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex gap-2.5 items-center">
+                          <span className={`h-2.5 w-2.5 rounded-full ${rep.severity === 'high' ? 'bg-red-500 animate-ping' : 'bg-amber-400'}`}></span>
+                          <span className={`text-[10px] font-mono tracking-widest font-bold uppercase ${rep.severity === 'high' ? 'text-red-400' : 'text-amber-400'}`}>
+                            {rep.severity.toUpperCase()} PRIORITY tRIAGE
                           </span>
-                          <h4 className="text-sm font-extrabold text-gray-900 mt-1">{member.name}</h4>
-                          <span className="text-[10px] text-gray-400 block font-medium mt-0.5">📍 {member.location}</span>
                         </div>
-
-                        <p className="text-xs text-gray-500 leading-relaxed font-sans max-w-xs">
-                          {member.bio}
-                        </p>
+                        <span className="text-[9px] font-mono text-slate-400">{rep.date}</span>
                       </div>
 
-                      <div className="w-full pt-4 border-t border-gray-100">
-                        <a 
-                          href={`tel:${member.phone.replace(/\s+/g, '')}`} 
-                          className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs py-2 rounded-lg transition-all flex items-center justify-center gap-2 border border-emerald-200"
-                        >
-                          <Phone className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>Call: {member.phone}</span>
-                        </a>
+                      <div className="mt-2.5 space-y-1">
+                        <h4 className="text-slate-100 font-sans font-extrabold text-sm">{rep.category.toUpperCase().replace('_', ' ')}</h4>
+                        <p className="text-slate-200 text-xs font-sans leading-relaxed">{rep.description}</p>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-slate-850/50 flex flex-wrap justify-between items-center text-[10px] gap-2">
+                        <div className="flex gap-1.5 items-center text-slate-300">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Location: <strong className="text-slate-100">{rep.location}</strong></span>
+                        </div>
+                        <div className="text-slate-350">
+                          Filed by: <strong className="text-slate-200">{rep.reporterName}</strong> ({rep.reporterPhone})
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* 🛡️ tab 7: SUPREME ADMIN CONSOLE */}
-            {activeTab === 'admin' && (
-              !isAdminLoggedIn ? (
-                <div className="max-w-md mx-auto py-8">
-                  <div className="bg-white rounded-3xl border border-gray-200 shadow-xs overflow-hidden">
-                    {/* Brand Banner Accent */}
-                    <div className="bg-emerald-800 text-white p-6 text-center space-y-2 relative">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-700/40 rounded-full blur-xl"></div>
-                      <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center mx-auto border border-white/20">
-                        <ShieldAlert className="w-7 h-7 text-yellow-300" />
-                      </div>
-                      <h3 className="text-lg font-bold font-display tracking-tight text-white mt-2">
-                        Oman Pakhtoon Community
-                      </h3>
-                      <p className="text-xs text-emerald-100 font-sans">
-                        Supreme Welfare Cabinet Security Portal
-                      </p>
-                    </div>
-
-                    <div className="p-6 sm:p-8 space-y-6">
-                      <div className="text-center space-y-1">
-                        <h4 className="text-base font-extrabold text-gray-900 font-sans">
-                          Admin Authentication Area
-                        </h4>
-                        <p className="text-xs text-gray-500 leading-relaxed">
-                          Please verify your credentials below to log in and access registration files, treasury receipts, and disaster management controls.
-                        </p>
-                      </div>
-
-                      {loginError && (
-                        <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold flex items-start gap-2.5">
-                          <XCircle className="w-4.5 h-4.5 shrink-0 text-rose-600" />
-                          <span>{loginError}</span>
-                        </div>
-                      )}
-
-                      <form onSubmit={(e) => {
-                        e.preventDefault();
-                        if (adminUsernameInput.trim().toLowerCase() === 'admin' && adminPasswordInput === 'admin123') {
-                          setIsAdminLoggedIn(true);
-                          setSimulatedRole('admin');
-                          setLoginError('');
-                          setAdminUsernameInput('');
-                          setAdminPasswordInput('');
-                        } else {
-                          setLoginError('Invalid username or password credentials. Please verify keys and retry.');
-                        }
-                      }} className="space-y-4">
-                        <div className="space-y-1">
-                          <label className="text-xs font-bold text-gray-750 uppercase tracking-wider block">
-                            Username / صارف کا نام
-                          </label>
-                          <input 
-                            type="text"
-                            required
-                            value={adminUsernameInput}
-                            onChange={(e) => setAdminUsernameInput(e.target.value)}
-                            placeholder="e.g. admin"
-                            className="w-full text-xs md:text-sm px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-bold text-gray-755 uppercase tracking-wider block">
-                            Password / پاس ورڈ
-                          </label>
-                          <input 
-                            type="password"
-                            required
-                            value={adminPasswordInput}
-                            onChange={(e) => setAdminPasswordInput(e.target.value)}
-                            placeholder="••••••••"
-                            className="w-full text-xs md:text-sm px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                          />
-                        </div>
-
-                        <button
-                          type="submit"
-                          className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs tracking-wider uppercase py-3 rounded-xl transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5 mt-2"
-                        >
-                          <ShieldCheck className="w-4 h-4" />
-                          <span>Verify & Access Console</span>
-                        </button>
-                      </form>
-
-                      {/* Demo credential helpful badge */}
-                      <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-2xl p-4.5 space-y-2.5 text-xs">
-                        <div className="flex items-center gap-1.5 font-bold text-slate-850 uppercase tracking-wider">
-                          <Sparkles className="w-3.5 h-3.5 text-yellow-600 shrink-0" />
-                          <span>Demo Portal Credentials</span>
-                        </div>
-                        <p className="text-gray-650 leading-relaxed">
-                          For instant validation of all administrative workflows, log in with the following demo credential keys:
-                        </p>
-                        <div className="bg-white/90 p-3 rounded-xl border border-yellow-200 font-mono text-xs space-y-1 hover:border-amber-300 transition">
-                          <div>Username: <strong className="text-emerald-800 select-all">admin</strong></div>
-                          <div>Password: <strong className="text-emerald-800 select-all">admin123</strong></div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAdminUsernameInput('admin');
-                            setAdminPasswordInput('admin123');
-                          }}
-                          className="w-full bg-white hover:bg-yellow-50 text-gray-800 font-bold border border-yellow-300 rounded-xl py-2 transition text-xs shadow-3xs"
-                        >
-                          ✨ Quick Autofill Credentials
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  {/* 1. Header warning/authorization state info */}
-                  <div className="bg-amber-500/10 rounded-2xl border border-amber-500/20 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <ShieldCheck className="w-8 h-8 text-amber-600 shrink-0" />
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-bold text-gray-900">
-                            Authorized Role: Finance Secretary Desk (Ikram Bacha)
-                          </h3>
-                          <span className="text-[10px] font-extrabold uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-full animate-float">
-                            Logged In
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Simulating administrator tasks. Approvals immediately adjust user states, metrics counters, and announcement streams.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button 
-                        onClick={() => {
-                          setIsAdminLoggedIn(false);
-                          setAdminUsernameInput('');
-                          setAdminPasswordInput('');
-                        }}
-                        className="bg-white hover:bg-gray-100 hover:border-gray-400 text-gray-750 font-bold text-xs px-3.5 py-2.5 border rounded-xl transition cursor-pointer"
-                      >
-                        🔒 Logout (لاگ آؤٹ)
-                      </button>
-                      {simulatedRole !== 'admin' ? (
-                        <button 
-                          onClick={() => setSimulatedRole('admin')}
-                          className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] uppercase tracking-wider px-3.5 py-2 rounded-xl shrink-0 cursor-pointer"
-                        >
-                          Assume Secretary role
-                        </button>
-                      ) : (
-                        <span className="text-xs text-emerald-700 font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-200 shadow-3xs">
-                          &bull; Simulation Active
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                {/* 2. Registration approvals desk */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                  
-                  {/* Left: Pending member documents review */}
-                  <div className="lg:col-span-6 bg-white rounded-2xl border border-gray-250 p-6 shadow-xs space-y-4">
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-2">
-                      👥 {t('pendingDocs')}
-                    </h3>
-                    <div className="space-y-3.5">
-                      {members.filter(m => m.status === 'pending').map(member => (
-                        <div key={member.id} className="border border-gray-200 rounded-xl p-4.5 bg-gray-50/50 space-y-3">
-                          <div className="flex items-center gap-3">
-                            <img src={member.photoUrl} alt="candidate ID" className="w-10 h-10 rounded-full object-cover border" />
-                            <div>
-                              <h4 className="text-xs font-bold text-gray-900">{member.name}</h4>
-                              <p className="text-[10px] text-gray-400">Mobile Call Desk: {member.phone}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-3 text-[10px] bg-white p-2.5 rounded border border-gray-100 font-medium">
-                            <span>District: <strong>{member.district}</strong></span>
-                            <span>Blood: <strong className="text-rose-600">{member.bloodGroup}</strong></span>
-                            <span>City in Oman: <strong>{member.city}</strong></span>
-                            <span>Employer: <strong>{member.employer}</strong></span>
-                          </div>
-
-                          <div className="flex gap-2 justify-end pt-1">
-                            <button 
-                              onClick={() => rejectMember(member.id)}
-                              className="bg-white hover:bg-gray-100 border text-gray-600 font-bold text-[10px] px-3 py-1.5 rounded-lg transition shrink-0 cursor-pointer"
-                            >
-                              Reject
-                            </button>
-                            <button 
-                              onClick={() => approveMember(member.id)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-4 py-1.5 rounded-lg transition shrink-0 cursor-pointer"
-                            >
-                              Approve & Grant voting card
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      {members.filter(m => m.status === 'pending').length === 0 && (
-                        <p className="text-xs text-gray-400 text-center py-6">No new registration documents pending.</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right: Pending bank wires verification */}
-                  <div className="lg:col-span-6 bg-white rounded-2xl border border-gray-250 p-6 shadow-xs space-y-4">
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-2">
-                      💰 {t('pendingDonations')}
-                    </h3>
-                    <div className="space-y-3.5">
-                      {donations.filter(d => d.status === 'pending').map(don => (
-                        <div key={don.id} className="border border-gray-200 rounded-xl p-4.5 bg-gray-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                          <div className="space-y-1">
-                            <span className="text-xs font-bold text-slate-900 block">{don.donorName}</span>
-                            <span className="text-[10px] text-gray-500 block">
-                              Receipt details: <strong>{don.amount} OMR</strong> via {don.method === 'bank' ? 'Muscat Bank direct' : 'Mobile cash wire'}
-                            </span>
-                          </div>
-
-                          <div className="flex gap-2 shrink-0">
-                            <button
-                              onClick={() => rejectDonation(don.id)}
-                              className="bg-white hover:bg-gray-100 border text-gray-600 font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition cursor-pointer"
-                            >
-                              Flag Fraud
-                            </button>
-                            <button
-                              onClick={() => verifyDonation(don.id)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg transition cursor-pointer"
-                            >
-                              Confirm Deposit
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      {donations.filter(d => d.status === 'pending').length === 0 && (
-                        <p className="text-xs text-gray-400 text-center py-6">All donation slips fully verified.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Emergency Alert resolution desk */}
-                <div className="bg-white rounded-2xl border border-gray-250 p-6 shadow-xs space-y-4">
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-2">
-                    🚨 {t('pendingAlerts')}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {reports.filter(r => r.status !== 'resolved').map(rep => (
-                      <div key={rep.id} className="border border-red-150 bg-red-500/5 rounded-xl p-4.5 space-y-3 flex flex-col justify-between">
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center flex-wrap gap-2">
-                            <span className="text-[10px] font-extrabold uppercase bg-red-900 text-white px-2 py-0.5 rounded tracking-wide">
-                              {rep.type.replace('_', ' ')}
-                            </span>
-                            <span className="text-[10px] font-mono text-gray-500 font-bold flex items-center gap-1 bg-gray-100/80 px-2 py-0.5 rounded-md border border-gray-200/50">
-                              Logged on: {rep.date} {rep.time && <span className="text-red-600 font-extrabold bg-red-100/60 px-1.5 py-0.2 rounded border border-red-200/40 font-mono ml-0.5">⏱️ {rep.time}</span>}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-700 leading-relaxed font-semibold">
-                            {rep.description}
-                          </p>
-                          <p className="text-xs font-medium text-slate-500">
-                            📍 Location: <strong className="text-slate-800">{rep.location}</strong>
-                          </p>
-                          <div className="flex items-center justify-between gap-1.5 bg-red-500/5 p-2 rounded-xl border border-red-150/40">
-                            <span className="text-xs font-medium text-slate-500">
-                              📞 Callback: <strong className="font-mono select-all text-slate-800">{rep.contactInfo}</strong>
-                            </span>
-                            <a
-                              href={getWhatsAppLink(rep.contactInfo, `Assalam o Alaikum, Pakhtoon Council Oman emergency cell tracking contact.`)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 bg-[#25D366] hover:bg-[#20ba5a] text-white text-[10px] font-black px-2.5 py-1 rounded shadow-3xs transition cursor-pointer whitespace-nowrap shrink-0"
-                              title="Engage with reporter on WhatsApp"
-                            >
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.864.001-2.641-1.019-5.123-2.87-6.979C16.612 1.906 14.13 .887 11.5 1.054c-5.438 0-9.863 4.414-9.866 9.865-.001 1.745.543 3.447 1.488 4.966l-.99 3.619 3.73-.978zM15.842 13.91c-.328-.164-1.94-.958-2.24-1.069-.302-.11-.521-.164-.741.164-.219.328-.85 1.069-1.042 1.288-.19.219-.384.246-.712.083-1.094-.547-1.838-.973-2.557-2.212-.178-.308-.178-.514.07-.736.143-.127.329-.384.494-.575.164-.191.219-.328.329-.548.11-.219.055-.411-.027-.575-.082-.164-.74-1.78-.985-2.383-.242-.591-.521-.52-.741-.52-.218-.014-.469-.014-.711-.014-.242 0-.64.091-.975.465-.335.374-1.28 1.258-1.28 3.064 0 1.806 1.312 3.551 1.493 3.797.181.246 2.585 3.948 6.262 5.534.874.377 1.558.602 2.088.771.88.279 1.68.239 2.312.145.705-.105 1.94-.793 2.213-1.52.274-.726.274-1.348.192-1.48-.083-.132-.302-.219-.63-.383z"/>
-                              </svg>
-                              <span>WhatsApp</span>
-                            </a>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 justify-end pt-3 border-t border-gray-100 mt-2">
-                          {rep.status === 'pending' && (
-                            <button
-                              onClick={() => changeReportStatus(rep.id, 'verified')}
-                              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg transition cursor-pointer"
-                            >
-                              Dispatch Aid Team
-                            </button>
-                          )}
-                          <button
-                            onClick={() => changeReportStatus(rep.id, 'resolved')}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg transition cursor-pointer"
-                          >
-                            Resolve Alert
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {reports.filter(r => r.status !== 'resolved').length === 0 && (
-                      <div className="col-span-2 text-center text-xs text-gray-400 py-6">All emergency alerts resolved safely! Good job cabinet.</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* 👥 Verified Registered Members Directory Desk with Membership Cards */}
-                <AdminMembersDirectory 
-                  members={members}
-                  onApprove={approveMember}
-                  onReject={rejectMember}
-                  onDeleteMember={deleteMember}
-                  language={language}
-                />
-
-                {/* 4. Controls: Update Announcement banner & News Feed */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Announcement banner text updater */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs space-y-4">
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-2">
-                      📣 Broadcast Billboard Text
-                    </h3>
-                    <form onSubmit={saveAdminAnnouncement} className="space-y-3.5">
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-500 font-medium">Tape Message (Marquee style)</label>
-                        <input 
-                          type="text"
-                          required
-                          value={adminAnnText}
-                          onChange={e => setAdminAnnText(e.target.value)}
-                          placeholder="e.g. Free medical diagnostic camp next Friday in Barka..."
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                        />
-                      </div>
-                      <button 
-                        type="submit"
-                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer"
-                      >
-                        Push broadcast live
-                      </button>
-                    </form>
-                  </div>
-
-                  {/* News publisher */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs space-y-4">
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-2">
-                      📰 Publish Portal News
-                    </h3>
-                    <form onSubmit={publishAdminNews} className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-500 font-medium">Article Title</label>
-                        <input 
-                          type="text"
-                          required
-                          value={adminNewsTitle}
-                          onChange={e => setAdminNewsTitle(e.target.value)}
-                          placeholder="Drive updates / cabinet transitions..."
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-xs text-gray-500 font-medium">Category</label>
-                          <select
-                            value={adminNewsCategory}
-                            onChange={e => setAdminNewsCategory(e.target.value as any)}
-                            className="w-full text-xs px-3.5 py-2 rounded-xl border border-gray-355 focus:outline-emerald-600 bg-white"
-                          >
-                            <option value="general">General News</option>
-                            <option value="announcement">Announcement</option>
-                            <option value="event">Event</option>
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-gray-500 font-medium">Actions</label>
-                          <button 
-                            type="button"
-                            onClick={downloadMembersCSV}
-                            className="w-full bg-slate-900 hover:bg-black text-white font-bold text-xs py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
-                          >
-                            📥 Member list (CSV)
-                          </button>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-500 font-medium">Article Paragraph Content</label>
-                        <textarea
-                          required
-                          rows={2}
-                          value={adminNewsContent}
-                          onChange={e => setAdminNewsContent(e.target.value)}
-                          placeholder="Detailed announcement text..."
-                          className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                        ></textarea>
-                      </div>
-                      <button 
-                        type="submit"
-                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer"
-                      >
-                        Publish news Article
-                      </button>
-                    </form>
-                  </div>
-                </div>
-
-                {/* 📢 Live Advertisement & Sponsor Billboard Management Suite */}
-                <AdManager 
-                  ads={ads} 
-                  onAddAd={handleAddAd} 
-                  onRemoveAd={handleRemoveAd} 
-                  onToggleAd={handleToggleAd} 
-                  adminOnlyAds={adminOnlyAds}
-                  onToggleAdminOnlyAds={() => setAdminOnlyAds(prev => !prev)}
-                  showSimulatorBar={showSimulatorBar}
-                  onToggleSimulatorBar={() => setShowSimulatorBar(prev => !prev)}
-                />
-              </div>
-            )
+            </div>
           )}
 
-            {/* ✉️ tab 8: CONTACT US */}
-            {activeTab === 'contact' && (
-              <div className="max-w-xl mx-auto space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-xs space-y-6">
-                  <div className="border-b border-gray-100 pb-4 text-center">
-                    <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 font-display inline-flex items-center gap-2">
-                      <Mail className="w-6 h-6 text-emerald-700" />
-                      {t('contactTitle')}
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                      {t('contactText')}
-                    </p>
+          {/* TAB 5: AUDITED DONATIONS LEDGER & SLIPS */}
+          {activeTab === 'donations' && (
+            <div className="space-y-6">
+              
+              {/* Top Sec: Donation form */}
+              <div className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                <div>
+                  <h3 className="text-xl font-display font-extrabold text-slate-50 flex items-center gap-2">
+                    <Heart className="text-amber-400 w-5.5 h-5.5 animate-pulse" />
+                    {t(lang, 'donationsTitle')}
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-1">
+                    {t(lang, 'donationsSubtitle')}
+                  </p>
+                </div>
+
+                <form onSubmit={handleDonationSlip} className="grid grid-cols-1 md:grid-cols-4 gap-4 font-sans text-xs">
+                  <div className="md:col-span-1 space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'donorNameLabel')} *</label>
+                    <input 
+                      type="text"
+                      required
+                      value={donName}
+                      onChange={(e) => setDonName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-850 text-slate-50 p-2.5 rounded-lg outline-none"
+                      placeholder="Your Name (or Guild)"
+                    />
                   </div>
 
-                  {contactFeedback && (
-                    <div className="p-4 rounded-xl bg-emerald-50 text-emerald-800 border-2 border-emerald-150 flex items-center gap-2.5 text-xs animate-float">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
-                      <span>{contactFeedback}</span>
-                    </div>
-                  )}
+                  <div className="md:col-span-1 space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'amountInOmr')} *</label>
+                    <input 
+                      type="number"
+                      step="0.001"
+                      required
+                      value={donAmount}
+                      onChange={(e) => setDonAmount(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-850 text-slate-50 p-2.5 rounded-lg font-mono outline-none"
+                      placeholder="e.g. 15.000 OMR"
+                    />
+                  </div>
 
-                  <form onSubmit={submitContactMsg} className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('fullName')} *</label>
-                      <input 
-                        type="text" 
-                        required
-                        value={contactName}
-                        onChange={e => setContactName(e.target.value)}
-                        placeholder={t('namePlaceholder')} 
-                        className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                      />
-                    </div>
+                  <div className="md:col-span-1 space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'donationMethodLabel')}</label>
+                    <select 
+                      value={donMethod}
+                      onChange={(e) => setDonMethod(e.target.value as any)}
+                      className="w-full bg-slate-950 border border-slate-850 text-slate-50 p-2.5 rounded-lg font-bold"
+                    >
+                      <option value="bank">{t(lang, 'methodBank')}</option>
+                      <option value="mobile_pay">{t(lang, 'methodMobilePay')}</option>
+                    </select>
+                  </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('emailAddress')}</label>
-                      <input 
-                        type="email" 
-                        value={contactEmail}
-                        onChange={e => setContactEmail(e.target.value)}
-                        placeholder="e.g. username@domain.com" 
-                        className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                      />
-                    </div>
+                  <div className="md:col-span-1 space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'transactionIdLabel')} *</label>
+                    <input 
+                      type="text"
+                      required
+                      value={donTxnId}
+                      onChange={(e) => setDonTxnId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-850 text-slate-50 p-2.5 rounded-lg font-mono outline-none"
+                      placeholder="e.g. TXN-89241029"
+                    />
+                  </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('navContact')} Message *</label>
-                      <textarea 
-                        required
-                        rows={5}
-                        value={contactMsg}
-                        onChange={e => setContactMsg(e.target.value)}
-                        placeholder={t('messagePlaceholder')} 
-                        className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white"
-                      ></textarea>
-                    </div>
-
+                  <div className="md:col-span-4 pt-2">
                     <button 
                       type="submit"
-                      className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs tracking-wider uppercase py-3 rounded-xl transition shadow-xs cursor-pointer font-sans"
+                      className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3.5 rounded-lg cursor-pointer transition flex items-center justify-center gap-1 text-xs"
                     >
-                      {t('sendMessage')}
+                      <Check className="w-4 h-4" /> {t(lang, 'submitDonationBtn')}
                     </button>
-                  </form>
+                  </div>
+                </form>
+              </div>
+
+              {/* Bottom Sec: Ledger log containing Download Receipt button */}
+              <div className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <h3 className="text-lg font-display font-bold text-slate-100">{t(lang, 'donLedgerTitle')}</h3>
+                
+                <div className="overflow-x-auto border border-slate-850 rounded-xl">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950 text-slate-400 font-mono text-[10px] uppercase border-b border-slate-850">
+                        <th className="py-3 px-4">Donation Receipt ID</th>
+                        <th className="py-3 px-4">Contributor / Donor</th>
+                        <th className="py-3 px-4">Sum Contributed</th>
+                        <th className="py-3 px-4">Financial Method Details</th>
+                        <th className="py-3 px-4">Audit Status</th>
+                        <th className="py-3 px-4 text-right">Receipt Print</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-850 font-sans text-xs">
+                      {donations.map((don) => (
+                        <tr key={don.id} className="hover:bg-slate-950/40 transition">
+                          
+                          <td className="py-3.5 px-4 font-mono text-slate-300 font-bold uppercase text-[11px]">
+                            {don.id.slice(0, 8)}
+                          </td>
+
+                          <td className="py-3.5 px-4 font-bold text-slate-50">
+                            {don.donorName}
+                          </td>
+
+                          <td className="py-3.5 px-4 font-mono text-amber-500 font-bold text-sm">
+                            {Number(don.amount).toFixed(3)} <span className="text-[10px] font-sans text-slate-300 inline-block ml-0.5">OMR</span>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-slate-200">
+                            <p className="font-semibold text-slate-200">{don.method === 'bank' ? 'Bank Muscat Online' : 'Mobile Pay Portal'}</p>
+                            <p className="text-[10px] font-mono text-slate-400" style={{ color: '#94a3b8' }}>Hash Ref: {don.transactionId}</p>
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            {don.status === 'verified' && (
+                              <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-extrabold px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
+                                {t(lang, 'statusVerified')}
+                              </span>
+                            )}
+                            {don.status === 'pending' && (
+                              <span className="bg-amber-950/60 text-amber-500 border border-amber-500/30 font-extrabold px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
+                                {t(lang, 'statusDonPending')}
+                              </span>
+                            )}
+                            {don.status === 'rejected' && (
+                              <span className="bg-red-950/60 text-red-500 border border-red-500/30 font-extrabold px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
+                                {t(lang, 'statusDonRejected')}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* DOWNLOAD PDF RECEIPT BUTTON: SOLVES THE SPECIFIC USER REQUEST */}
+                          <td className="py-3.5 px-4 text-right">
+                            <button 
+                              onClick={() => generateDonationReceipt(don)}
+                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-sans font-extrabold text-[10px] tracking-wide uppercase px-3 py-1.5 rounded-md cursor-pointer transition flex items-center gap-1 inline-flex shadow hover:shadow-md"
+                              id={`btn-download-receipt-${don.id}`}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              {t(lang, 'receiptBtn')}
+                            </button>
+                          </td>
+
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+
+            </div>
+          )}
+
+          {/* TAB 6: WELFARE CABINET ELECTIONS */}
+          {activeTab === 'elections' && (
+            <div className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+              <div>
+                <h3 className="text-xl font-display font-extrabold text-slate-50 flex items-center gap-2">
+                  <Vote className="text-amber-500 w-5.5 h-5.5" />
+                  {t(lang, 'electionsTitle')}
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  {t(lang, 'electionsSubtitle')}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {elections.map((elec) => (
+                  <div key={elec.id} className="bg-slate-950 p-6 rounded-2xl border-2 border-slate-850 space-y-4">
+                    <div className="border-b border-slate-850 pb-3">
+                      <h4 className="text-slate-50 text-base font-display font-bold">
+                        {lang === 'en' && elec.title}
+                        {lang === 'ur' && elec.UrduTitle}
+                        {lang === 'ps' && elec.PashtoTitle}
+                      </h4>
+                      <p className="text-[10px] font-mono text-slate-400 mt-0.5">Poll closes on: {elec.date}</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {elec.candidates.map((cand) => {
+                        const isVoted = votedElections.includes(elec.id);
+                        return (
+                          <div key={cand.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-slate-700 transition flex flex-col justify-between gap-4">
+                            <div className="space-y-1">
+                              <p className="text-amber-400 font-bold text-sm">{cand.name}</p>
+                              <p className="text-slate-100 text-xs">
+                                {lang === 'en' && cand.description}
+                                {lang === 'ur' && cand.UrduDesc}
+                                {lang === 'ps' && cand.PashtoDesc}
+                              </p>
+                            </div>
+                            
+                            <div className="pt-2 border-t border-slate-850/60 flex items-center justify-between">
+                              <div className="text-xs font-mono font-bold text-slate-300">
+                                {t(lang, 'votesCount')}: <span className="text-slate-50 text-sm font-extrabold font-mono inline-block ml-1">{cand.votes}</span>
+                              </div>
+                              <button 
+                                onClick={() => handleVote(elec.id, cand.id)}
+                                disabled={isVoted}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wide uppercase cursor-pointer transition ${isVoted ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'}`}
+                              >
+                                {isVoted ? 'Ballot Cast' : t(lang, 'castVoteBtn')}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: BULLETIN NEWSFEED PRESS DIRECTORY */}
+          {activeTab === 'bulletins' && (
+            <div className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+              <div>
+                <h3 className="text-xl font-display font-extrabold text-slate-50 flex items-center gap-2">
+                  <Newspaper className="text-amber-500 w-5.5 h-5.5" />
+                  {t(lang, 'bulletinTitle')}
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  {t(lang, 'bulletinSubtitle')}
+                </p>
+              </div>
+
+              {/* Special Billboard Announcement section */}
+              {news.filter(n => n.important).map((ann) => (
+                <div key={ann.id} className="bg-amber-950/20 border-2 border-amber-500 rounded-xl p-5 relative overflow-hidden space-y-3">
+                  <span className="bg-amber-500 text-slate-950 px-2 py-0.5 rounded text-[8.5px] font-mono font-bold tracking-widest uppercase">
+                    {t(lang, 'announcementBillboard')}
+                  </span>
+                  <div className="space-y-1">
+                    <h4 className="text-amber-400 font-display font-bold text-base">
+                      {lang === 'en' && ann.title}
+                      {lang === 'ur' && ann.UrduTitle}
+                      {lang === 'ps' && ann.PashtoTitle}
+                    </h4>
+                    <p className="text-slate-100 text-xs font-sans leading-relaxed">
+                      {lang === 'en' && ann.content}
+                      {lang === 'ur' && ann.UrduContent}
+                      {lang === 'ps' && ann.PashtoContent}
+                    </p>
+                  </div>
+                  <div className="text-[9px] font-mono text-amber-500/80">Posted on: {ann.date}</div>
+                </div>
+              ))}
+
+              {/* Standard Bulletins feed */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400 px-1 font-bold">{t(lang, 'newsLabel')}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {news.filter(n => !n.important).map((n) => (
+                    <div key={n.id} className="bg-slate-950 p-4 rounded-xl border border-slate-850 hover:border-slate-800 transition space-y-2">
+                      <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[8px] font-mono uppercase">
+                        {n.category}
+                      </span>
+                      <h5 className="text-slate-100 text-sm font-sans font-extrabold">
+                        {lang === 'en' && n.title}
+                        {lang === 'ur' && n.UrduTitle}
+                        {lang === 'ps' && n.PashtoTitle}
+                      </h5>
+                      <p className="text-slate-200 text-xs font-sans leading-relaxed">
+                        {lang === 'en' && n.content}
+                        {lang === 'ur' && n.UrduContent}
+                        {lang === 'ps' && n.PashtoContent}
+                      </p>
+                      <p className="text-[9px] font-mono text-slate-450 pt-1" style={{ color: '#94a3b8' }}>Date: {n.date}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 8: HELPDESK DIRECT FEEDBACK TICKETS */}
+          {activeTab === 'contact' && (
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+              
+              {/* Form col */}
+              <div className="md:col-span-5 bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div>
+                  <h3 className="text-lg font-display font-bold text-slate-100 flex items-center gap-1.5">
+                    <Send className="w-5 h-5 text-amber-400" />
+                    Submit Suggestion
+                  </h3>
+                  <p className="text-xs text-slate-350">
+                    {t(lang, 'contactSubtitle')}
+                  </p>
+                </div>
+
+                <form onSubmit={handleContactMsg} className="space-y-4 font-sans text-xs">
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'emergencyReporterName')} *</label>
+                    <input 
+                      type="text"
+                      required
+                      value={msgName}
+                      onChange={(e) => setMsgName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-100 p-2 py-2.5 rounded-lg"
+                      placeholder="Your name"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">Email Address</label>
+                    <input 
+                      type="email"
+                      value={msgEmail}
+                      onChange={(e) => setMsgEmail(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-100 p-2 py-2.5 rounded-lg"
+                      placeholder="opc-member@domain.com"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'contactSubject')}</label>
+                    <select 
+                      value={msgSubject}
+                      onChange={(e) => setMsgSubject(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 font-bold text-slate-100 p-2 rounded-lg"
+                    >
+                      <option value="Welfare Policy">Welfare Policy Inquiry</option>
+                      <option value="Financial Audit">Ledger Auditing Suggestion</option>
+                      <option value="Card Registry">Medical / Body Transit Coverage</option>
+                      <option value="General Feedback">General Comment</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase font-bold text-slate-300">{t(lang, 'messageLabel')} *</label>
+                    <textarea 
+                      required
+                      rows={4}
+                      value={msgBody}
+                      onChange={(e) => setMsgBody(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-slate-100 p-2 rounded-lg"
+                      placeholder="Elaborate details..."
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-3 rounded-lg cursor-pointer text-xs"
+                  >
+                    Send Suggestion Ticket
+                  </button>
+                </form>
+              </div>
+
+              {/* Feed logs col */}
+              <div className="md:col-span-7 bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div>
+                  <h3 className="text-lg font-display font-bold text-slate-100">Helpdesk Suggestion Feed</h3>
+                  <p className="text-xs text-slate-300">Public feedback logs compiled for trustee dashboard review.</p>
+                </div>
+
+                <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                  {messages.map((m) => (
+                    <div key={m.id} className="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-2">
+                      <div className="flex justify-between items-center text-[10px] text-slate-300 border-b border-slate-900 pb-1.5 font-mono">
+                        <span className="font-bold uppercase tracking-wider text-amber-500">OPC HELPDESK ENTRY</span>
+                        <span>{m.date}</span>
+                      </div>
+                      <p className="text-slate-200 text-xs font-sans italic">"{m.message}"</p>
+                      <p className="text-[10px] text-slate-350 pt-1 text-right" style={{ color: '#94a3b8' }}>
+                        Submitted by: <strong className="text-slate-100 font-sans">{m.name}</strong> ({m.email})
+                      </p>
+                    </div>
+                  ))}
+                  {messages.length === 0 && (
+                    <p className="text-slate-350 text-center py-10 font-sans text-xs">No feedback message logs currently recorded on database.</p>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+        </div>
       </main>
 
-      {/* 🟢 FOOTER WITH REGIONAL MAP INDICATORS */}
-      <footer className="bg-slate-900 text-gray-400 mt-auto py-10 px-6 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          
-          {/* Col 1: About the portal */}
-          <div className="space-y-3.5">
-            <h4 className="text-slate-100 font-extrabold text-xs uppercase tracking-widest font-display">
-              {t('appTitle')}
-            </h4>
-            <p className="text-xs leading-relaxed text-gray-400">
-              Approved community registration council in the Sultanate of Oman. Supporting Pakistani labor class expats from Khyber Pakhtunkhwa, Quetta, and tribal districts with emergency assistance, casket cargo transiting logistics, and legal counselling.
-            </p>
-            <span className="inline-block bg-slate-800 text-yellow-400 text-[10px] font-extrabold px-2.5 py-1 rounded border border-slate-700">
-              🇵🇰 🤝 🇴🇲 Oman Pakhtoon alliance Group
-            </span>
-          </div>
-
-          {/* Col 2: Useful Links in Muscat & Salalah */}
-          <div className="space-y-3.5">
-            <h4 className="text-slate-100 font-extrabold text-xs uppercase tracking-widest font-display">
-              Consular Quick Links
-            </h4>
-            <ul className="text-xs space-y-2 font-medium">
-              <li>
-                <a 
-                  href="https://parepmuscat@mofa.gov.pk" 
-                  className="hover:text-emerald-400 transition flex items-center gap-1"
-                >
-                  <Globe className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Embassy consular affairs link</span>
-                </a>
-              </li>
-              <li>
-                <span className="text-[11px] block text-gray-500 font-normal">Shatti Al-Qurm Consular Drive (CNIC desk)</span>
-              </li>
-              <li>
-                <a 
-                  href="tel:+96824696140" 
-                  className="hover:text-emerald-400 transition flex items-center gap-1"
-                >
-                  <Phone className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Pakistan Consulate Muscat: +968 2469 6140</span>
-                </a>
-              </li>
-              <li>
-                <span className="text-[11px] block text-gray-500 font-normal">Khoula Hospital Medical translation coordinator Desk</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 3: Central OMR Finance routing reference */}
-          <div className="space-y-3">
-            <h4 className="text-slate-100 font-extrabold text-xs uppercase tracking-widest font-display">
-              Audited Trust Secretary Details
-            </h4>
-            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-[11px] space-y-1.5 font-sans">
-              <p>📍 Office: <strong className="text-gray-300">Welfare Desk Office, Barka, Muscat Hwy, Oman</strong></p>
-              <p>🗄️ Finance: <strong className="text-yellow-400">Ikram Bacha (Secr. Finance OPC)</strong></p>
-              <p>📱 Mobile: <strong className="text-gray-300 select-all font-mono">+968 9911 1870</strong></p>
-              <p>🏛️ Bank Muscat: <strong className="text-gray-300 select-all font-mono">01011503131001</strong></p>
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto border-t border-slate-800 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between text-[11px] font-medium text-slate-500 gap-4">
-          <p>
-            &copy; {new Date().getFullYear()} Oman Pakhtoon Community Welfare portal. Fully open transparent audited treasury registry. All Rights Reserved.
-          </p>
-          <div className="flex gap-4">
-            <span>Muscat</span>
-            <span>&bull;</span>
-            <span>Salalah</span>
-            <span>&bull;</span>
-            <span>Sohar</span>
-            <span>&bull;</span>
-            <span>Sur</span>
-            <span>&bull;</span>
-            <span>Nizwa</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
