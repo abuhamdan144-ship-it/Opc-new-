@@ -116,6 +116,7 @@ export const initialReports: EmergencyReport[] = [
     type: "injury",
     description: "Brother Khan Wali suffered a severe fall from scaffolding at Al-Khuwair site hospital block. We need immediate blood group matching for O- negative blood bottle donation and volunteer translation at Khoula Hospital.",
     date: "2026-06-02",
+    time: "08:45 AM",
     location: "Khoula Hospital, Muscat",
     contactInfo: "+968 9481 0291 (Amjad Ali)",
     status: "verified"
@@ -127,6 +128,7 @@ export const initialReports: EmergencyReport[] = [
     type: "lost_passport",
     description: "Lost passport and labor permit cards during a transit bus trip from Salalah to Muscat. Need guidelines on consulate travel affidavit paperwork to avoid municipal administrative fine penalty.",
     date: "2026-05-30",
+    time: "03:20 PM",
     location: "Azaiba Bus Terminal, Muscat",
     contactInfo: "+968 9112 0045",
     status: "resolved"

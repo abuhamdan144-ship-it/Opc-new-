@@ -20,6 +20,7 @@ export interface EmergencyReport {
   type: 'death' | 'injury' | 'lost_passport' | 'other';
   description: string;
   date: string;
+  time?: string;
   location: string;
   contactInfo: string;
   status: 'pending' | 'verified' | 'resolved';

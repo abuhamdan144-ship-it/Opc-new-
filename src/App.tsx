@@ -120,6 +120,7 @@ export default function App() {
   const [repType, setRepType] = useState<'death' | 'injury' | 'lost_passport' | 'other'>('injury');
   const [repDesc, setRepDesc] = useState('');
   const [repDate, setRepDate] = useState('');
+  const [repTime, setRepTime] = useState('');
   const [repLocation, setRepLocation] = useState('');
   const [repContact, setRepContact] = useState('');
   const [repFeedback, setRepFeedback] = useState('');
@@ -313,13 +314,26 @@ export default function App() {
 
     const currentReporter = members.find(m => m.status === 'approved') || { name: 'Local Resident', id: 'guest' };
 
+    const nowStamp = new Date();
+    let formattedTimeInput = repTime;
+    if (repTime && repTime.includes(':')) {
+      const [hStr, mStr] = repTime.split(':');
+      const hour = parseInt(hStr, 10);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      formattedTimeInput = `${String(displayHour).padStart(2, '0')}:${mStr} ${ampm}`;
+    }
+    const defaultTime = nowStamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const finalTime = formattedTimeInput || defaultTime;
+
     const newReport: EmergencyReport = {
       id: "rep-" + Date.now(),
       userId: currentReporter.id,
       reporterName: currentReporter.name,
       type: repType,
       description: repDesc,
-      date: repDate || new Date().toISOString().split('T')[0],
+      date: repDate || nowStamp.toISOString().split('T')[0],
+      time: finalTime,
       location: repLocation || "Sultanate of Oman",
       contactInfo: repContact,
       status: "pending"
@@ -333,6 +347,7 @@ export default function App() {
     setRepLocation('');
     setRepContact('');
     setRepDate('');
+    setRepTime('');
 
     setTimeout(() => setRepFeedback(''), 10000);
   };
@@ -1261,7 +1276,7 @@ export default function App() {
                         ></textarea>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-1">
                           <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('incidentDate')}</label>
                           <input 
@@ -1273,6 +1288,19 @@ export default function App() {
                         </div>
 
                         <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            {language === 'ur' ? 'حادثہ کا وقت' : language === 'ps' ? 'د پېښې وخت' : 'Incident Time'}
+                          </label>
+                          <input 
+                            type="time"
+                            value={repTime}
+                            onChange={e => setRepTime(e.target.value)}
+                            className="w-full text-xs md:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-emerald-600 bg-white font-mono"
+                          />
+                          <span className="text-[10px] text-gray-400 block font-normal leading-tight">Defaults to current time</span>
+                        </div>
+
+                        <div className="space-y-1 col-span-1">
                           <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('incidentLocation')} *</label>
                           <input 
                             type="text"
@@ -1337,7 +1365,7 @@ export default function App() {
 
                           <div className="grid grid-cols-2 gap-3 text-[11px] pt-3 border-t border-gray-100 font-medium text-gray-500 items-center">
                             <div>
-                              <span>Date: <strong className="text-slate-800">{rep.date}</strong></span>
+                              <span>Date: <strong className="text-slate-800">{rep.date}</strong>{rep.time && <span className="text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-150 font-mono font-bold ml-1.5 text-[10px]/none inline-flex items-center gap-0.5" title="Submission Time">⏱️ {rep.time}</span>}</span>
                             </div>
                             <div>
                               <span>Loc: <strong className="text-slate-800">{rep.location}</strong></span>
@@ -1965,8 +1993,8 @@ export default function App() {
                             <span className="text-[10px] font-extrabold uppercase bg-red-900 text-white px-2 py-0.5 rounded tracking-wide">
                               {rep.type.replace('_', ' ')}
                             </span>
-                            <span className="text-[10px] font-mono text-gray-400 font-bold">
-                              Logged on: {rep.date}
+                            <span className="text-[10px] font-mono text-gray-500 font-bold flex items-center gap-1 bg-gray-100/80 px-2 py-0.5 rounded-md border border-gray-200/50">
+                              Logged on: {rep.date} {rep.time && <span className="text-red-600 font-extrabold bg-red-100/60 px-1.5 py-0.2 rounded border border-red-200/40 font-mono ml-0.5">⏱️ {rep.time}</span>}
                             </span>
                           </div>
                           <p className="text-xs text-gray-700 leading-relaxed font-semibold">
