@@ -70,4 +70,17 @@ export interface Election {
   endDate: string;
 }
 
+export interface Advertisement {
+  id: string;
+  title: string;
+  advertiserName: string;
+  imageUrl: string; 
+  targetUrl: string; 
+  amountPaid: number; 
+  startDate: string; 
+  expiryDate: string; 
+  isActive: boolean;
+  notes?: string;
+}
+
 export type Language = 'en' | 'ur' | 'ps';

@@ -30,10 +30,12 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Member, EmergencyReport, Donation, CabinetMember, NewsItem, Election, Language } from './types';
+import { Member, EmergencyReport, Donation, CabinetMember, NewsItem, Election, Language, Advertisement } from './types';
 import { i18nTranslations } from './i18n';
-import { initialCabinet, initialNews, initialMembers, initialReports, initialDonations, initialElections } from './initialData';
+import { initialCabinet, initialNews, initialMembers, initialReports, initialDonations, initialElections, initialAds } from './initialData';
 import { DigitalMemberId } from './components/DigitalMemberId';
+import { AdBillboard } from './components/AdBillboard';
+import { AdManager } from './components/AdManager';
 
 export default function App() {
   // --- States ---
@@ -82,6 +84,11 @@ export default function App() {
   const [announcementMsg, setAnnouncementMsg] = useState<string>(() => {
     return localStorage.getItem('opc_announcement') || 
       "📢 Special Announcement: Welfare contribution portal is active! Contact the cabinet for immediate disaster response.";
+  });
+
+  const [ads, setAds] = useState<Advertisement[]>(() => {
+    const saved = localStorage.getItem('opc_ads');
+    return saved ? JSON.parse(saved) : initialAds;
   });
 
   // User input states inside different forms
@@ -180,6 +187,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('opc_news', JSON.stringify(news));
   }, [news]);
+
+  useEffect(() => {
+    localStorage.setItem('opc_ads', JSON.stringify(ads));
+  }, [ads]);
 
   useEffect(() => {
     localStorage.setItem('opc_voted_ids', JSON.stringify(votedIds));
@@ -437,6 +448,18 @@ export default function App() {
     alert("News item published to live portal feed!");
     setAdminNewsTitle('');
     setAdminNewsContent('');
+  };
+
+  const handleAddAd = (newAd: Advertisement) => {
+    setAds(prev => [newAd, ...prev]);
+  };
+
+  const handleRemoveAd = (id: string) => {
+    setAds(prev => prev.filter(ad => ad.id !== id));
+  };
+
+  const handleToggleAd = (id: string) => {
+    setAds(prev => prev.map(ad => ad.id === id ? { ...ad, isActive: !ad.isActive } : ad));
   };
 
   // --- Filtered Donation Ledger List ---
@@ -703,6 +726,9 @@ export default function App() {
                     </ul>
                   </div>
                 </div>
+
+                {/* 📢 Sponsored Advertisement Billboard Block */}
+                <AdBillboard ads={ads} language={language} />
 
                 {/* 1.5 Digital Welfare Membership Card Badge */}
                 <div className="space-y-4">
@@ -1977,6 +2003,14 @@ export default function App() {
                     </form>
                   </div>
                 </div>
+
+                {/* 📢 Live Advertisement & Sponsor Billboard Management Suite */}
+                <AdManager 
+                  ads={ads} 
+                  onAddAd={handleAddAd} 
+                  onRemoveAd={handleRemoveAd} 
+                  onToggleAd={handleToggleAd} 
+                />
               </div>
             )
           )}

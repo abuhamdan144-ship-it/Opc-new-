@@ -1,4 +1,4 @@
-import { CabinetMember, NewsItem, Member, EmergencyReport, Donation, Election } from './types';
+import { CabinetMember, NewsItem, Member, EmergencyReport, Donation, Election, Advertisement } from './types';
 
 export const initialCabinet: CabinetMember[] = [
   {
@@ -187,3 +187,43 @@ export const initialElections: Election[] = [
     ]
   }
 ];
+
+export const initialAds: Advertisement[] = [
+  {
+    id: "ad-1",
+    title: "Safe Cargo Door-to-Door Dispatch (KP & Punjab)",
+    advertiserName: "KP-Oman Swift Cargo Logistics Ltd",
+    imageUrl: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=600&h=300",
+    targetUrl: "https://wa.me/96899341872",
+    amountPaid: 45,
+    startDate: "2026-05-01",
+    expiryDate: "2026-08-30",
+    isActive: true,
+    notes: "Prime placement above the central treasury ledger. Standard rate card: 15 OMR per month."
+  },
+  {
+    id: "ad-2",
+    title: "Khyber Shinwari Barbeque - Muscat & Ruwi Branches",
+    advertiserName: "Shinwari Traditional Food Group",
+    imageUrl: "https://images.unsplash.com/photo-1603360946369-dc9bb6258143?auto=format&fit=crop&q=80&w=600&h=300",
+    targetUrl: "https://wa.me/96899111870",
+    amountPaid: 60,
+    startDate: "2026-06-01",
+    expiryDate: "2026-09-30",
+    isActive: true,
+    notes: "Sponsors of the Barka health camp drive."
+  },
+  {
+    id: "ad-3",
+    title: "Al-Muqtadir Heavy Scaffolding & Excavator Hire",
+    advertiserName: "Al-Muqtadir Machinery Co.",
+    imageUrl: "https://images.unsplash.com/photo-1541625602330-2277a4c46182?auto=format&fit=crop&q=80&w=600&h=300",
+    targetUrl: "tel:+96893224001",
+    amountPaid: 30,
+    startDate: "2026-04-15",
+    expiryDate: "2026-06-15",
+    isActive: true,
+    notes: "Special discounts for registered OPC active cabinet members."
+  }
+];
+
