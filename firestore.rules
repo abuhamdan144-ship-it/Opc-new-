@@ -1,8 +1,137 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Default deny catch-all
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isStringWithLimit(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    // Validation for IDs targeting single document ops
+    function isValidId(id) {
+      return isStringWithLimit(id, 128);
+    }
+
+    // 1. Members Collection Rules
+    match /members/{memberId} {
+      allow read: if true;
+      allow create, update: if isValidId(memberId) && isValidMember(incoming());
+      allow delete: if true;
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasAll(['id', 'fullName', 'phone', 'passportNo', 'omaniId', 'status'])
+        && isStringWithLimit(data.id, 100)
+        && isStringWithLimit(data.fullName, 100)
+        && isStringWithLimit(data.phone, 100)
+        && isStringWithLimit(data.passportNo, 100)
+        && isStringWithLimit(data.omaniId, 100)
+        && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected');
+    }
+
+    // 2. Emergency Reports Collection Rules
+    match /reports/{reportId} {
+      allow read: if true;
+      allow create, update: if isValidId(reportId) && isValidEmergencyReport(incoming());
+      allow delete: if true;
+    }
+
+    function isValidEmergencyReport(data) {
+      return data.keys().hasAll(['id', 'reporterName', 'reporterPhone', 'severity', 'category', 'location', 'description'])
+        && isStringWithLimit(data.id, 100)
+        && isStringWithLimit(data.reporterName, 100)
+        && isStringWithLimit(data.reporterPhone, 100)
+        && (data.severity == 'low' || data.severity == 'medium' || data.severity == 'high')
+        && (data.category == 'death' || data.category == 'accident' || data.category == 'lost_passport' || data.category == 'medical_need' || data.category == 'general')
+        && isStringWithLimit(data.location, 200)
+        && isStringWithLimit(data.description, 1000);
+    }
+
+    // 3. Donations Collection Rules
+    match /donations/{donationId} {
+      allow read: if true;
+      allow create, update: if isValidId(donationId) && isValidDonation(incoming());
+      allow delete: if true;
+    }
+
+    function isValidDonation(data) {
+      return data.keys().hasAll(['id', 'donorName', 'amount', 'method', 'transactionId', 'status'])
+        && isStringWithLimit(data.id, 100)
+        && isStringWithLimit(data.donorName, 100)
+        && (data.amount is int || data.amount is float) && data.amount > 0
+        && (data.method == 'bank' || data.method == 'mobile_pay')
+        && isStringWithLimit(data.transactionId, 100)
+        && (data.status == 'pending' || data.status == 'verified' || data.status == 'rejected');
+    }
+
+    // 4. Elections Collection Rules
+    match /elections/{electionId} {
+      allow read: if true;
+      allow create, update: if isValidId(electionId) && isValidElection(incoming());
+      allow delete: if true;
+    }
+
+    function isValidElection(data) {
+      return data.keys().hasAll(['id', 'title', 'active', 'candidates'])
+        && isStringWithLimit(data.id, 100)
+        && isStringWithLimit(data.title, 200)
+        && data.active is bool
+        && data.candidates is list;
+    }
+
+    // 5. News Collection Rules
+    match /news/{newsId} {
+      allow read: if true;
+      allow create, update: if isValidId(newsId) && isValidNewsItem(incoming());
+      allow delete: if true;
+    }
+
+    function isValidNewsItem(data) {
+      return data.keys().hasAll(['id', 'title', 'category', 'content', 'date'])
+        && isStringWithLimit(data.id, 100)
+        && isStringWithLimit(data.title, 200)
+        && isStringWithLimit(data.category, 100)
+        && isStringWithLimit(data.content, 5000)
+        && isStringWithLimit(data.date, 100);
+    }
+
+    // 6. Advertisements Collection Rules
+    match /advertisements/{adId} {
+      allow read: if true;
+      allow create, update: if isValidId(adId) && isValidAdvertisement(incoming());
+      allow delete: if true;
+    }
+
+    function isValidAdvertisement(data) {
+      return data.keys().hasAll(['id', 'sponsorName', 'bannerUrl', 'tagline'])
+        && isStringWithLimit(data.id, 100)
+        && isStringWithLimit(data.sponsorName, 200)
+        && isStringWithLimit(data.bannerUrl, 2048)
+        && isStringWithLimit(data.tagline, 1000);
+    }
+
+    // 7. Contact Messages Collection Rules
+    match /contactMessages/{msgId} {
+      allow read: if true;
+      allow create, update: if isValidId(msgId) && isValidContactMessage(incoming());
+      allow delete: if true;
+    }
+
+    function isValidContactMessage(data) {
+      return data.keys().hasAll(['id', 'name', 'message', 'date'])
+        && isStringWithLimit(data.id, 100)
+        && isStringWithLimit(data.name, 200)
+        && isStringWithLimit(data.message, 2000)
+        && isStringWithLimit(data.date, 100);
     }
   }
 }
