@@ -743,9 +743,6 @@ export default function App() {
                 <div className="bg-white rounded-2xl border border-gray-200/80 p-6 md:p-8 shadow-xs flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full z-0 opacity-50"></div>
                   <div className="space-y-4 md:flex-1 relative z-10">
-                    <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 font-bold text-xs px-3 py-1 rounded-full border border-emerald-200">
-                      <Sparkles className="w-3.5 h-3.5" /> Established in Muscat Since 1998
-                    </div>
                     <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight font-display">
                       {t('appTitle')}
                     </h2>
