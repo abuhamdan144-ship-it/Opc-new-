@@ -436,6 +436,19 @@ export default function App() {
     setDonations(prev => prev.map(d => d.id === id ? { ...d, status: 'verified' as const } : d));
   };
 
+  const getWhatsAppLink = (phone: string, message?: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    let formatted = cleaned;
+    if (cleaned.length === 8 && (cleaned.startsWith('7') || cleaned.startsWith('9') || cleaned.startsWith('2'))) {
+      formatted = '968' + cleaned;
+    }
+    const url = `https://wa.me/${formatted}`;
+    if (message) {
+      return `${url}?text=${encodeURIComponent(message)}`;
+    }
+    return url;
+  };
+
   const rejectDonation = (id: string) => {
     setDonations(prev => prev.map(d => d.id === id ? { ...d, status: 'rejected' as const } : d));
   };
@@ -1322,21 +1335,56 @@ export default function App() {
                             {rep.description}
                           </p>
 
-                          <div className="grid grid-cols-2 gap-3 text-[11px] pt-2 border-t border-gray-100 font-medium text-gray-500">
+                          <div className="grid grid-cols-2 gap-3 text-[11px] pt-3 border-t border-gray-100 font-medium text-gray-500 items-center">
                             <div>
-                              <span>Date: <strong>{rep.date}</strong></span>
+                              <span>Date: <strong className="text-slate-800">{rep.date}</strong></span>
                             </div>
                             <div>
-                              <span>Loc: <strong>{rep.location}</strong></span>
+                              <span>Loc: <strong className="text-slate-800">{rep.location}</strong></span>
                             </div>
-                            <div className="col-span-2">
-                              <span>Callback Call Desk: <strong className="text-slate-900 font-mono select-all bg-gray-100 px-1 py-0.5 rounded">{rep.contactInfo}</strong></span>
+                            <div className="col-span-2 flex items-center justify-between gap-2.5 bg-slate-50 border border-gray-200/60 p-2.5 rounded-xl">
+                              <div className="min-w-0">
+                                <span className="text-[10px] text-gray-400 block uppercase font-black tracking-wider leading-none mb-1">Callback Desk</span>
+                                <strong className="text-slate-900 font-mono select-all text-xs truncate block">{rep.contactInfo}</strong>
+                              </div>
+                              <a
+                                href={getWhatsAppLink(rep.contactInfo, `Regarding Emergency Case: ${rep.description.substring(0, 50)}...`)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20ba5a] text-white text-[10px] font-black px-3 py-1.5 rounded-lg shadow-3xs transition-all hover:-translate-y-0.5 cursor-pointer shrink-0"
+                                title="Contact reporter via WhatsApp"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.864.001-2.641-1.019-5.123-2.87-6.979C16.612 1.906 14.13 .887 11.5 1.054c-5.438 0-9.863 4.414-9.866 9.865-.001 1.745.543 3.447 1.488 4.966l-.99 3.619 3.73-.978zM15.842 13.91c-.328-.164-1.94-.958-2.24-1.069-.302-.11-.521-.164-.741.164-.219.328-.85 1.069-1.042 1.288-.19.219-.384.246-.712.083-1.094-.547-1.838-.973-2.557-2.212-.178-.308-.178-.514.07-.736.143-.127.329-.384.494-.575.164-.191.219-.328.329-.548.11-.219.055-.411-.027-.575-.082-.164-.74-1.78-.985-2.383-.242-.591-.521-.52-.741-.52-.218-.014-.469-.014-.711-.014-.242 0-.64.091-.975.465-.335.374-1.28 1.258-1.28 3.064 0 1.806 1.312 3.551 1.493 3.797.181.246 2.585 3.948 6.262 5.534.874.377 1.558.602 2.088.771.88.279 1.68.239 2.312.145.705-.105 1.94-.793 2.213-1.52.274-.726.274-1.348.192-1.48-.083-.132-.302-.219-.63-.383z"/>
+                                </svg>
+                                <span>WhatsApp Support</span>
+                              </a>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
+                </div>
+
+                {/* 🟢 Floating WhatsApp Support Action Trigger relative to Emergency Cell tab */}
+                <div className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-40">
+                  <a
+                    href={getWhatsAppLink(repContact || '96891120045', `AoA Pakhtoon Council Oman, I am submitting/inquiring about emergency assistance. Contact callback: ${repContact || 'None'}`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-white font-extrabold text-xs px-5 py-3.5 rounded-full shadow-2xl transition hover:scale-105 active:scale-95 border-2 border-white/60 group cursor-pointer animate-pulse"
+                    title={repContact ? `WhatsApp Contact: ${repContact}` : "WhatsApp Support Assist Line"}
+                  >
+                    <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.864.001-2.641-1.019-5.123-2.87-6.979C16.612 1.906 14.13 .887 11.5 1.054c-5.438 0-9.863 4.414-9.866 9.865-.001 1.745.543 3.447 1.488 4.966l-.99 3.619 3.73-.978zM15.842 13.91c-.328-.164-1.94-.958-2.24-1.069-.302-.11-.521-.164-.741.164-.219.328-.85 1.069-1.042 1.288-.19.219-.384.246-.712.083-1.094-.547-1.838-.973-2.557-2.212-.178-.308-.178-.514.07-.736.143-.127.329-.384.494-.575.164-.191.219-.328.329-.548.11-.219.055-.411-.027-.575-.082-.164-.74-1.78-.985-2.383-.242-.591-.521-.52-.741-.52-.218-.014-.469-.014-.711-.014-.242 0-.64.091-.975.465-.335.374-1.28 1.258-1.28 3.064 0 1.806 1.312 3.551 1.493 3.797.181.246 2.585 3.948 6.262 5.534.874.377 1.558.602 2.088.771.88.279 1.68.239 2.312.145.705-.105 1.94-.793 2.213-1.52.274-.726.274-1.348.192-1.48-.083-.132-.302-.219-.63-.383z"/>
+                    </svg>
+                    <span>
+                      {repContact 
+                        ? `${language === 'ur' ? 'واٹس ایپ رابطہ' : language === 'ps' ? 'واټساپ اړیکه' : 'WhatsApp Callback'}: ${repContact}` 
+                        : `${language === 'ur' ? 'واٹس ایپ مدد' : language === 'ps' ? 'واټساپ ملاتړ' : 'WhatsApp Support'}`}
+                    </span>
+                  </a>
                 </div>
               </div>
             )}
@@ -1925,11 +1973,25 @@ export default function App() {
                             {rep.description}
                           </p>
                           <p className="text-xs font-medium text-slate-500">
-                            📍 Location: <strong>{rep.location}</strong>
+                            📍 Location: <strong className="text-slate-800">{rep.location}</strong>
                           </p>
-                          <p className="text-xs font-medium text-slate-500">
-                            📞 Callback: <strong>{rep.contactInfo}</strong>
-                          </p>
+                          <div className="flex items-center justify-between gap-1.5 bg-red-500/5 p-2 rounded-xl border border-red-150/40">
+                            <span className="text-xs font-medium text-slate-500">
+                              📞 Callback: <strong className="font-mono select-all text-slate-800">{rep.contactInfo}</strong>
+                            </span>
+                            <a
+                              href={getWhatsAppLink(rep.contactInfo, `Assalam o Alaikum, Pakhtoon Council Oman emergency cell tracking contact.`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 bg-[#25D366] hover:bg-[#20ba5a] text-white text-[10px] font-black px-2.5 py-1 rounded shadow-3xs transition cursor-pointer whitespace-nowrap shrink-0"
+                              title="Engage with reporter on WhatsApp"
+                            >
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.864.001-2.641-1.019-5.123-2.87-6.979C16.612 1.906 14.13 .887 11.5 1.054c-5.438 0-9.863 4.414-9.866 9.865-.001 1.745.543 3.447 1.488 4.966l-.99 3.619 3.73-.978zM15.842 13.91c-.328-.164-1.94-.958-2.24-1.069-.302-.11-.521-.164-.741.164-.219.328-.85 1.069-1.042 1.288-.19.219-.384.246-.712.083-1.094-.547-1.838-.973-2.557-2.212-.178-.308-.178-.514.07-.736.143-.127.329-.384.494-.575.164-.191.219-.328.329-.548.11-.219.055-.411-.027-.575-.082-.164-.74-1.78-.985-2.383-.242-.591-.521-.52-.741-.52-.218-.014-.469-.014-.711-.014-.242 0-.64.091-.975.465-.335.374-1.28 1.258-1.28 3.064 0 1.806 1.312 3.551 1.493 3.797.181.246 2.585 3.948 6.262 5.534.874.377 1.558.602 2.088.771.88.279 1.68.239 2.312.145.705-.105 1.94-.793 2.213-1.52.274-.726.274-1.348.192-1.48-.083-.132-.302-.219-.63-.383z"/>
+                              </svg>
+                              <span>WhatsApp</span>
+                            </a>
+                          </div>
                         </div>
 
                         <div className="flex gap-2 justify-end pt-3 border-t border-gray-100 mt-2">
