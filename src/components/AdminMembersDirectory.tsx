@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, CheckCircle2, UserCheck, CreditCard, ShieldAlert, FileCheck, Award } from 'lucide-react';
+import { Search, CheckCircle2, UserCheck, CreditCard, ShieldAlert, FileCheck, Award, Download } from 'lucide-react';
 import { Member, Donation, Language } from '../types';
 import { t } from '../i18n';
 
@@ -32,6 +32,46 @@ export const AdminMembersDirectory: React.FC<AdminMembersDirectoryProps> = ({
 
   // General Table Search
   const [directorySearch, setDirectorySearch] = useState('');
+
+  // CSV Export Handler
+  const handleExportCSV = () => {
+    const headers = [
+      'ID',
+      'Full Legal Name',
+      'WhatsApp Phone',
+      'Profession',
+      'Oman Length of Stay',
+      'Omani Civil ID',
+      'Passport Number',
+      'Registration Date',
+      'Status'
+    ];
+
+    const rows = members.map(m => [
+      m.id,
+      m.fullName,
+      m.phone,
+      m.profession,
+      m.durationOfOmanStay,
+      m.omaniId,
+      m.passportNo,
+      m.registrationDate,
+      m.status
+    ].map(val => {
+      const stringVal = val === undefined || val === null ? '' : String(val);
+      return `"${stringVal.replace(/"/g, '""')}"`;
+    }).join(','));
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `opc_welfare_registered_members_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Handle Card verification lookup
   const handleLookup = (e: React.FormEvent) => {
@@ -179,16 +219,27 @@ export const AdminMembersDirectory: React.FC<AdminMembersDirectoryProps> = ({
             <h3 className="text-lg font-display font-bold text-slate-105">OPC Welfare Registry Directory</h3>
             <p className="text-slate-300 text-xs mt-0.5">Complete record of registered Pakhtoon laborers under Muscat Cabinet protection.</p>
           </div>
-          {/* Internal search inside directory */}
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
-            <input 
-              type="text"
-              placeholder={t(language, 'searchLabel') + '...'}
-              value={directorySearch}
-              onChange={(e) => setDirectorySearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-slate-200 text-xs font-sans outline-none focus:border-amber-400"
-            />
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            {/* Export CSV Button */}
+            <button
+              onClick={handleExportCSV}
+              id="btn-export-members-csv"
+              className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-sans font-bold px-3.5 py-1.5 rounded-lg transition duration-200 cursor-pointer text-xs flex items-center gap-1.5 shadow-md w-full sm:w-auto justify-center"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export CSV</span>
+            </button>
+            {/* Internal search inside directory */}
+            <div className="relative w-full sm:w-56">
+              <Search className="absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
+              <input 
+                type="text"
+                placeholder={t(language, 'searchLabel') + '...'}
+                value={directorySearch}
+                onChange={(e) => setDirectorySearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-slate-200 text-xs font-sans outline-none focus:border-amber-400"
+              />
+            </div>
           </div>
         </div>
 
