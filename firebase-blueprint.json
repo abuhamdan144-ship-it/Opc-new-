@@ -1,0 +1,159 @@
+{
+  "entities": {
+    "Member": {
+      "title": "Member",
+      "description": "User registration record for membership cards and status tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user or member ID string" },
+        "name": { "type": "string", "description": "Full name of the member" },
+        "email": { "type": "string", "description": "Email address" },
+        "phone": { "type": "string", "description": "Omani or Pakistani active phone number" },
+        "bloodGroup": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+        "district": { "type": "string", "description": "Home district name in Pakistan of origin (e.g., Swat, Mardan)" },
+        "city": { "type": "string", "description": "Current city or area of residence in Oman" },
+        "employer": { "type": "string", "description": "Employer name or company of work in Oman" },
+        "emergencyContact": { "type": "string", "description": "Emergency helper and family relations contact" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "photoUrl": { "type": "string", "description": "Profile picture base64 or hosted image url" },
+        "joinedDate": { "type": "string", "description": "Date of registration in system" }
+      },
+      "required": ["id", "name", "email", "phone", "bloodGroup", "district", "city", "employer", "emergencyContact", "status", "joinedDate"]
+    },
+    "EmergencyReport": {
+      "title": "EmergencyReport",
+      "description": "Assistance and emergency welfare request logged by community members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "type": { "type": "string", "enum": ["death", "injury", "lost_passport", "other"] },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "location": { "type": "string" },
+        "contactInfo": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "resolved"] }
+      },
+      "required": ["id", "userId", "reporterName", "type", "description", "date", "location", "contactInfo", "status"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "Donations records in support of the Federal Welfare Trust Registry fund",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "donorName": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "method": { "type": "string", "enum": ["bank", "mobile"] }
+      },
+      "required": ["id", "donorName", "amount", "date", "status", "method"]
+    },
+    "NewsItem": {
+      "title": "NewsItem",
+      "description": "General announcements, events, and community updates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string" },
+        "category": { "type": "string", "enum": ["general", "announcement", "event"] }
+      },
+      "required": ["id", "title", "content", "date", "category"]
+    },
+    "Election": {
+      "title": "Election",
+      "description": "Council active election cycles with candidate boards and active properties",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "endDate": { "type": "string" },
+        "candidates": { "type": "array", "description": "Candidate arrays with dynamic voting metrics" }
+      },
+      "required": ["id", "title", "description", "isActive", "endDate", "candidates"]
+    },
+    "Advertisement": {
+      "title": "Advertisement",
+      "description": "Verifications sponsor advertisements for billboard presentation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "advertiserName": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "targetUrl": { "type": "string" },
+        "amountPaid": { "type": "number" },
+        "startDate": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "title", "advertiserName", "imageUrl", "targetUrl", "amountPaid", "startDate", "expiryDate", "isActive"]
+    },
+    "ContactMsg": {
+      "title": "ContactMsg",
+      "description": "Messages sent to the administrator council desk",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["id", "name", "phone", "subject", "message", "createdAt"]
+    },
+    "AppSetting": {
+      "title": "AppSetting",
+      "description": "General settings such as current global banner announcement text",
+      "type": "object",
+      "properties": {
+        "announcement": { "type": "string" }
+      },
+      "required": ["announcement"]
+    }
+  },
+  "firestore": {
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "Collection of community member registrations"
+    },
+    "/reports/{reportId}": {
+      "schema": "EmergencyReport",
+      "description": "Welfare assistance tracking events"
+    },
+    "/donations/{donationId}": {
+      "schema": "Donation",
+      "description": "Registry fund submissions"
+    },
+    "/news/{newsId}": {
+      "schema": "NewsItem",
+      "description": "News board timeline items"
+    },
+    "/elections/{electionId}": {
+      "schema": "Election",
+      "description": "Active election council voting details"
+    },
+    "/ads/{adId}": {
+      "schema": "Advertisement",
+      "description": "Commercial verified billboard items"
+    },
+    "/contact_msgs/{msgId}": {
+      "schema": "ContactMsg",
+      "description": "Admin helpdesk queries"
+    },
+    "/settings/{settingId}": {
+      "schema": "AppSetting",
+      "description": "Global layout announcements or administrative variables"
+    }
+  }
+}

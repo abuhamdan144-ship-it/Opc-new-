@@ -1,0 +1,140 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Core Reusable Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'abuhamdan144@gmail.com' ||
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // --- Entity Validation Helpers ---
+    function isValidMember(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 100
+        && data.email is string && data.email.size() <= 100
+        && data.phone is string && data.phone.size() <= 30
+        && data.bloodGroup is string && data.bloodGroup.size() <= 5
+        && data.district is string && data.district.size() <= 100
+        && data.city is string && data.city.size() <= 100
+        && data.employer is string && data.employer.size() <= 100
+        && data.emergencyContact is string && data.emergencyContact.size() <= 200
+        && data.status is string && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected');
+    }
+
+    function isValidReport(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.reporterName is string && data.reporterName.size() <= 100
+        && data.type is string && (data.type == 'death' || data.type == 'injury' || data.type == 'lost_passport' || data.type == 'other')
+        && data.description is string && data.description.size() <= 2000
+        && data.date is string && data.date.size() <= 30
+        && data.location is string && data.location.size() <= 200
+        && data.contactInfo is string && data.contactInfo.size() <= 200
+        && data.status is string && (data.status == 'pending' || data.status == 'verified' || data.status == 'resolved');
+    }
+
+    // Support flexible structure validation checks for lists and numeric limits
+    function isValidDonation(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.donorName is string && data.donorName.size() <= 100
+        && data.amount is number && data.amount > 0 && data.amount <= 100000
+        && data.date is string && data.date.size() <= 30
+        && data.status is string && (data.status == 'pending' || data.status == 'verified' || data.status == 'rejected')
+        && data.method is string && (data.method == 'bank' || data.method == 'mobile');
+    }
+
+    function isValidElection(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 1000
+        && data.isActive is bool
+        && data.endDate is string && data.endDate.size() <= 30
+        && data.candidates is list && data.candidates.size() <= 20;
+    }
+
+    // --- Entity Collections Rules ---
+
+    // Members rules
+    match /members/{memberId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(memberId) && request.auth.uid == memberId && isValidMember(request.resource.data) && request.resource.data.status == 'pending';
+      allow update: if isSignedIn() && isValidId(memberId) && (
+        isAdmin() || 
+        (request.auth.uid == memberId && isValidMember(request.resource.data) && request.resource.data.status == resource.data.status)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Emergency Reports
+    match /reports/{reportId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(reportId) && isValidReport(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(reportId) && (
+        isAdmin() || 
+        (request.resource.data.userId == request.auth.uid && isValidReport(request.resource.data) && request.resource.data.status == resource.data.status)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Donations Ledger
+    match /donations/{donationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(donationId) && isValidDonation(request.resource.data) && request.resource.data.status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // News updates
+    match /news/{newsId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Election voting logs
+    match /elections/{electionId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isValidElection(request.resource.data) && request.resource.data.title == resource.data.title && request.resource.data.description == resource.data.description && request.resource.data.isActive == resource.data.isActive)
+      );
+    }
+
+    // Sponsor billboards
+    match /ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Contact messages logs
+    match /contact_msgs/{msgId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Administrative layout settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

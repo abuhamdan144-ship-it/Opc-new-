@@ -41,6 +41,16 @@ import { AdManager } from './components/AdManager';
 import { CommunityDashboard } from './components/CommunityDashboard';
 import { AdminMembersDirectory } from './components/AdminMembersDirectory';
 
+// --- Firebase Connections & Sync ---
+import { auth } from './firebase';
+import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { 
+  initializeFirestoreData, 
+  saveDocument, 
+  removeDocument, 
+  fetchCollection 
+} from './firebaseSync';
+
 export default function App() {
   // --- States ---
   const [language, setLanguage] = useState<Language>(() => {
@@ -170,6 +180,63 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // --- Firebase Sync States ---
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isFirebaseSyncing, setIsFirebaseSyncing] = useState<boolean>(true);
+  const [firebaseStatus, setFirebaseStatus] = useState<'connected' | 'offline' | 'error'>('offline');
+
+  useEffect(() => {
+    const syncDb = async () => {
+      try {
+        setIsFirebaseSyncing(true);
+        await initializeFirestoreData();
+        setFirebaseStatus('connected');
+
+        const liveMembers = await fetchCollection<Member>('members');
+        const liveReports = await fetchCollection<EmergencyReport>('reports');
+        const liveDonations = await fetchCollection<Donation>('donations');
+        const liveElections = await fetchCollection<Election>('elections');
+        const liveNews = await fetchCollection<NewsItem>('news');
+        const liveAds = await fetchCollection<Advertisement>('ads');
+
+        if (liveMembers.length > 0) setMembers(liveMembers);
+        if (liveReports.length > 0) setReports(liveReports);
+        if (liveDonations.length > 0) setDonations(liveDonations);
+        if (liveElections.length > 0) setElections(liveElections);
+        if (liveNews.length > 0) setNews(liveNews);
+        if (liveAds.length > 0) setAds(liveAds);
+
+        // Try getting administrative announcer setting from Firestore
+        const settingsDocs = await fetchCollection<{announcement: string}>('settings');
+        const annDoc = settingsDocs.find(s => s.announcement);
+        if (annDoc) {
+          setAnnouncementMsg(annDoc.announcement);
+        }
+
+        setIsFirebaseSyncing(false);
+      } catch (err) {
+        console.error("Firestore sync issue:", err);
+        setFirebaseStatus('error');
+        setIsFirebaseSyncing(false);
+      }
+    };
+    syncDb();
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        if (user.email === 'abuhamdan144@gmail.com') {
+          setSimulatedRole('admin');
+          setIsAdminLoggedIn(true);
+        } else {
+          setSimulatedRole('member');
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   // --- Synchronization Effects ---
   useEffect(() => {
     localStorage.setItem('opc_lang', language);
@@ -291,6 +358,7 @@ export default function App() {
     };
 
     setMembers(prev => [newMember, ...prev]);
+    saveDocument('members', newMember.id, newMember);
     setRegFeedback(t('regSuccess'));
     
     // Reset forms
@@ -342,6 +410,7 @@ export default function App() {
     };
 
     setReports(prev => [newReport, ...prev]);
+    saveDocument('reports', newReport.id, newReport);
     setRepFeedback(t('reportSent'));
 
     // Reset fields
@@ -373,6 +442,7 @@ export default function App() {
     };
 
     setDonations(prev => [newDonation, ...prev]);
+    saveDocument('donations', newDonation.id, newDonation);
     setDonFeedback(t('donationSuccess'));
 
     setDonName('');
@@ -402,6 +472,17 @@ export default function App() {
     list.push(newMessage);
     localStorage.setItem('opc_contact_msgs', JSON.stringify(list));
 
+    const firebaseMsg = {
+      id: String(newMessage.id),
+      name: newMessage.name,
+      phone: "",
+      subject: "Suggestion Feed",
+      message: newMessage.message,
+      createdAt: newMessage.date,
+      read: false
+    };
+    saveDocument('contact_msgs', firebaseMsg.id, firebaseMsg);
+
     setContactFeedback(t('messageSaved'));
     setContactName('');
     setContactEmail('');
@@ -417,20 +498,25 @@ export default function App() {
       return;
     }
 
-    setElections(prev => prev.map(elec => {
-      if (elec.id === electionId) {
-        return {
-          ...elec,
-          candidates: elec.candidates.map(cand => {
-            if (cand.id === candidateId) {
-              return { ...cand, votes: cand.votes + 1 };
-            }
-            return cand;
-          })
-        };
-      }
-      return elec;
-    }));
+    setElections(prev => {
+      const updated = prev.map(elec => {
+        if (elec.id === electionId) {
+          const nextElec = {
+            ...elec,
+            candidates: elec.candidates.map(cand => {
+              if (cand.id === candidateId) {
+                return { ...cand, votes: cand.votes + 1 };
+              }
+              return cand;
+            })
+          };
+          saveDocument('elections', electionId, nextElec);
+          return nextElec;
+        }
+        return elec;
+      });
+      return updated;
+    });
 
     setVotedIds(prev => [...prev, electionId]);
     alert(t('voteLogged'));
@@ -438,19 +524,41 @@ export default function App() {
 
   // --- Admin Administrative Actions ---
   const approveMember = (id: string) => {
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, status: 'approved' as const } : m));
+    setMembers(prev => prev.map(m => {
+      if (m.id === id) {
+        const updated = { ...m, status: 'approved' as const };
+        saveDocument('members', id, updated);
+        return updated;
+      }
+      return m;
+    }));
   };
 
   const rejectMember = (id: string) => {
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, status: 'rejected' as const } : m));
+    setMembers(prev => prev.map(m => {
+      if (m.id === id) {
+        const updated = { ...m, status: 'rejected' as const };
+        saveDocument('members', id, updated);
+        return updated;
+      }
+      return m;
+    }));
   };
 
   const deleteMember = (id: string) => {
     setMembers(prev => prev.filter(m => m.id !== id));
+    removeDocument('members', id);
   };
 
   const verifyDonation = (id: string) => {
-    setDonations(prev => prev.map(d => d.id === id ? { ...d, status: 'verified' as const } : d));
+    setDonations(prev => prev.map(d => {
+      if (d.id === id) {
+        const updated = { ...d, status: 'verified' as const };
+        saveDocument('donations', id, updated);
+        return updated;
+      }
+      return d;
+    }));
   };
 
   const getWhatsAppLink = (phone: string, message?: string) => {
@@ -467,11 +575,25 @@ export default function App() {
   };
 
   const rejectDonation = (id: string) => {
-    setDonations(prev => prev.map(d => d.id === id ? { ...d, status: 'rejected' as const } : d));
+    setDonations(prev => prev.map(d => {
+      if (d.id === id) {
+        const updated = { ...d, status: 'rejected' as const };
+        saveDocument('donations', id, updated);
+        return updated;
+      }
+      return d;
+    }));
   };
 
   const changeReportStatus = (id: string, newStatus: 'pending' | 'verified' | 'resolved') => {
-    setReports(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    setReports(prev => prev.map(r => {
+      if (r.id === id) {
+        const updated = { ...r, status: newStatus };
+        saveDocument('reports', id, updated);
+        return updated;
+      }
+      return r;
+    }));
   };
 
   const saveAdminAnnouncement = (e: React.FormEvent) => {
@@ -479,6 +601,7 @@ export default function App() {
     if (!adminAnnText.trim()) return;
     setAnnouncementMsg(adminAnnText);
     localStorage.setItem('opc_announcement', adminAnnText);
+    saveDocument('settings', 'announcement', { announcement: adminAnnText });
     alert("Billboard notice successfully updated across the portal!");
     setAdminAnnText('');
   };
@@ -499,6 +622,7 @@ export default function App() {
     };
 
     setNews(prev => [nItem, ...prev]);
+    saveDocument('news', nItem.id, nItem);
     alert("News item published to live portal feed!");
     setAdminNewsTitle('');
     setAdminNewsContent('');
@@ -506,14 +630,23 @@ export default function App() {
 
   const handleAddAd = (newAd: Advertisement) => {
     setAds(prev => [newAd, ...prev]);
+    saveDocument('ads', newAd.id, newAd);
   };
 
   const handleRemoveAd = (id: string) => {
     setAds(prev => prev.filter(ad => ad.id !== id));
+    removeDocument('ads', id);
   };
 
   const handleToggleAd = (id: string) => {
-    setAds(prev => prev.map(ad => ad.id === id ? { ...ad, isActive: !ad.isActive } : ad));
+    setAds(prev => prev.map(ad => {
+      if (ad.id === id) {
+        const updated = { ...ad, isActive: !ad.isActive };
+        saveDocument('ads', id, updated);
+        return updated;
+      }
+      return ad;
+    }));
   };
 
   // --- Filtered Donation Ledger List ---
@@ -657,24 +790,73 @@ export default function App() {
             </div>
           </div>
 
-          {/* Language Selector Selector Component with glassmorphic effect */}
-          <div className="flex items-center gap-3 bg-gray-950/75 p-3 rounded-2xl border border-yellow-400/20 shadow-xl backdrop-blur-md">
-            <Globe className="w-4 h-4 text-yellow-450 shrink-0" />
-            <span className="text-xs text-slate-300 font-bold whitespace-nowrap">{t('switchLanguage')}:</span>
-            <div className="flex gap-1.5">
-              {(['en', 'ur', 'ps'] as Language[]).map((ln) => (
+          {/* Language Selector & Firebase status bar with glassmorphic effect */}
+          <div className="flex flex-col gap-3 shrink-0 items-end">
+            {/* Language Selector Selector Component with glassmorphic effect */}
+            <div className="flex items-center gap-3 bg-slate-900/90 p-2.5 rounded-2xl border border-yellow-400/20 shadow-xl backdrop-blur-md">
+              <Globe className="w-4 h-4 text-yellow-450 shrink-0" />
+              <span className="text-xs text-slate-300 font-bold whitespace-nowrap">{t('switchLanguage')}:</span>
+              <div className="flex gap-1.5">
+                {(['en', 'ur', 'ps'] as Language[]).map((ln) => (
+                  <button
+                    key={ln}
+                    onClick={() => setLanguage(ln)}
+                    className={`px-3 py-1 text-[11px] font-black rounded-lg transition-all ${
+                      language === ln 
+                        ? 'bg-yellow-450 text-slate-950 shadow-sm font-black' 
+                        : 'text-slate-300 hover:bg-white/10 hover:text-yellow-300'
+                    }`}
+                  >
+                    {ln === 'en' ? 'English' : ln === 'ur' ? 'اردو' : 'پښتو'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 🔒 Firebase Google Authentication Sync Container */}
+            <div className="flex items-center gap-3 bg-slate-900/90 px-3 py-2 rounded-2xl border border-emerald-500/20 shadow-xl backdrop-blur-md">
+              <div className="flex items-center gap-1.5 mr-1 shrink-0">
+                <span className={`w-2 h-2 rounded-full ${firebaseStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                <span className="text-[10px] text-slate-300 font-mono tracking-tight font-medium">
+                  {firebaseStatus === 'connected' ? 'Firebase Live' : 'Offline Mode'}
+                </span>
+              </div>
+              
+              {firebaseUser ? (
+                <div className="flex items-center gap-2">
+                  {firebaseUser.photoURL ? (
+                    <img src={firebaseUser.photoURL} alt="" className="w-5 h-5 rounded-full border border-yellow-400" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-slate-700 text-[10px] text-white flex items-center justify-center uppercase font-black">
+                      {firebaseUser.email?.[0] || 'U'}
+                    </div>
+                  )}
+                  <span className="text-[10px] font-bold text-yellow-450 truncate max-w-[120px] hidden sm:block">
+                    {firebaseUser.displayName?.split(' ')[0] || firebaseUser.email}
+                  </span>
+                  <button
+                    onClick={() => signOut(auth)}
+                    className="text-[10px] px-2.5 py-1 font-extrabold text-slate-350 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                  >
+                    {language === 'en' ? 'Sign Out' : 'لاگ آؤٹ'}
+                  </button>
+                </div>
+              ) : (
                 <button
-                  key={ln}
-                  onClick={() => setLanguage(ln)}
-                  className={`px-3.5 py-1.5 text-xs font-black rounded-xl transition-all ${
-                    language === ln 
-                      ? 'bg-yellow-450 text-slate-950 shadow-sm' 
-                      : 'text-slate-300 hover:bg-white/10 hover:text-yellow-300'
-                  }`}
+                  onClick={async () => {
+                    try {
+                      const provider = new GoogleAuthProvider();
+                      await signInWithPopup(auth, provider);
+                    } catch (error) {
+                      console.error("Auth Fail:", error);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 text-[10px] font-black bg-gradient-to-r from-yellow-450 to-amber-500 text-slate-950 px-3 py-1.5 rounded-xl hover:from-yellow-400 hover:to-amber-450 shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  {ln === 'en' ? 'English' : ln === 'ur' ? 'اردو' : 'پښتو'}
+                  <Sparkles className="w-3 h-3 shrink-0" />
+                  <span>{language === 'en' ? 'Sign in with Google' : 'گوگل سے لاگ ان'}</span>
                 </button>
-              ))}
+              )}
             </div>
           </div>
         </div>
