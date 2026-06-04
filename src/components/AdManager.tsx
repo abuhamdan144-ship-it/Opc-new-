@@ -28,6 +28,8 @@ interface AdManagerProps {
   onToggleAd: (id: string) => void;
   adminOnlyAds: boolean;
   onToggleAdminOnlyAds: () => void;
+  showSimulatorBar: boolean;
+  onToggleSimulatorBar: () => void;
 }
 
 const PRESET_IMAGES = [
@@ -59,7 +61,9 @@ export const AdManager: React.FC<AdManagerProps> = ({
   onRemoveAd, 
   onToggleAd,
   adminOnlyAds,
-  onToggleAdminOnlyAds
+  onToggleAdminOnlyAds,
+  showSimulatorBar,
+  onToggleSimulatorBar
 }) => {
   // Input fields state
   const [title, setTitle] = useState('');
@@ -222,6 +226,47 @@ export const AdManager: React.FC<AdManagerProps> = ({
               <>
                 <ToggleLeft className="w-5 h-5 shrink-0 text-gray-400" />
                 <span>Open for Public Offers (عوام کے لیے کھلا ہے)</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ⚙️ OVERRIDE TABS: Portal Simulator Visibility setting */}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-left">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-800 bg-slate-200 text-[10px] font-black px-2 py-0.5 rounded-md uppercase">
+              Developer Scaffolding
+            </span>
+            <h4 className="text-xs font-black text-gray-900 uppercase tracking-tight">
+              Top Portal Simulator Bar Configuration
+            </h4>
+          </div>
+          <p className="text-[11px] text-gray-650 leading-relaxed max-w-2xl font-sans">
+            Hide or show the role-simulation workspace banner permanently from the top of the portal. Perfect for cleaning up the layout when reviewing the client-facing presentation.
+          </p>
+        </div>
+
+        <div className="shrink-0 flex items-center gap-2 w-full md:w-auto">
+          <button
+            type="button"
+            onClick={onToggleSimulatorBar}
+            className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-black transition-all w-full justify-center md:w-auto md:justify-start ${
+              showSimulatorBar 
+                ? 'bg-emerald-700 border-emerald-600 text-white shadow-3xs' 
+                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            {showSimulatorBar ? (
+              <>
+                <ToggleRight className="w-5 h-5 shrink-0" />
+                <span>Simulator Bar Visible (آن ہے)</span>
+              </>
+            ) : (
+              <>
+                <ToggleLeft className="w-5 h-5 shrink-0 text-gray-400" />
+                <span>Simulator Bar Hidden (چُھپا ہوا ہے)</span>
               </>
             )}
           </button>

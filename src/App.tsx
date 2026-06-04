@@ -36,6 +36,8 @@ import { initialCabinet, initialNews, initialMembers, initialReports, initialDon
 import { DigitalMemberId } from './components/DigitalMemberId';
 import { AdBillboard } from './components/AdBillboard';
 import { AdManager } from './components/AdManager';
+import { CommunityDashboard } from './components/CommunityDashboard';
+import { AdminMembersDirectory } from './components/AdminMembersDirectory';
 
 export default function App() {
   // --- States ---
@@ -94,6 +96,11 @@ export default function App() {
   const [adminOnlyAds, setAdminOnlyAds] = useState<boolean>(() => {
     const saved = localStorage.getItem('opc_admin_only_ads');
     return saved ? saved === 'true' : true; // Default to true (Only Admin Allowed to Run Ads)
+  });
+
+  const [showSimulatorBar, setShowSimulatorBar] = useState<boolean>(() => {
+    const saved = localStorage.getItem('opc_show_simulator_bar');
+    return saved ? saved === 'true' : false; // Default to false (hidden) per user request to hide simulator from the top section
   });
 
   // User input states inside different forms
@@ -200,6 +207,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('opc_admin_only_ads', String(adminOnlyAds));
   }, [adminOnlyAds]);
+
+  useEffect(() => {
+    localStorage.setItem('opc_show_simulator_bar', String(showSimulatorBar));
+  }, [showSimulatorBar]);
 
   useEffect(() => {
     localStorage.setItem('opc_voted_ids', JSON.stringify(votedIds));
@@ -417,6 +428,10 @@ export default function App() {
     setMembers(prev => prev.map(m => m.id === id ? { ...m, status: 'rejected' as const } : m));
   };
 
+  const deleteMember = (id: string) => {
+    setMembers(prev => prev.filter(m => m.id !== id));
+  };
+
   const verifyDonation = (id: string) => {
     setDonations(prev => prev.map(d => d.id === id ? { ...d, status: 'verified' as const } : d));
   };
@@ -506,54 +521,64 @@ export default function App() {
       dir={isRtl ? 'rtl' : 'ltr'}
     >
       {/* 🟢 TOP SIMULATOR & FLAG BAR */}
-      <div className="bg-slate-900 text-slate-100 py-2.5 px-4 text-xs border-b border-slate-800">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Quick simulator status */}
-          <div className="flex items-center gap-2 flex-wrap justify-center">
-            <span className="text-emerald-400 font-semibold uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" /> Portal Simulator:
-            </span>
-            <span className="text-slate-300">Choose who you are simulating to test full portal mechanics:</span>
-            <div className="inline-flex rounded-md shadow-xs overflow-hidden border border-slate-700 bg-slate-800 p-0.5 ml-1">
-              <button 
-                onClick={() => setSimulatedRole('guest')}
-                className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-all ${simulatedRole === 'guest' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+      {showSimulatorBar && (
+        <div className="bg-slate-900 text-slate-100 py-2.5 px-4 text-xs border-b border-slate-800">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Quick simulator status */}
+            <div className="flex items-center gap-2 flex-wrap justify-center font-sans">
+              <span className="text-emerald-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" /> Portal Simulator:
+              </span>
+              <span className="text-slate-300 animate-pulse">Choose who you are simulating to test full portal mechanics:</span>
+              <div className="inline-flex rounded-md shadow-xs overflow-hidden border border-slate-700 bg-slate-800 p-0.5 ml-1">
+                <button 
+                  onClick={() => setSimulatedRole('guest')}
+                  className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-all ${simulatedRole === 'guest' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Guest Expat
+                </button>
+                <button 
+                  onClick={() => setSimulatedRole('member')}
+                  className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-all ${simulatedRole === 'member' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Approved Member (Amjad)
+                </button>
+                <button 
+                  onClick={() => setSimulatedRole('admin')}
+                  className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-all ${simulatedRole === 'admin' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Finance Sec. Admin (Ikram)
+                </button>
+              </div>
+            </div>
+
+            {/* Social icons & indicators */}
+            <div className="flex items-center gap-4.5 font-medium font-sans">
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Muscat Server Live
+              </span>
+              <div className="h-4 w-px bg-slate-700"></div>
+              <a 
+                href="https://ais-dev-kwgj634upw3m2n2rbxh53o-469166214171.europe-west1.run.app" 
+                target="_blank" 
+                className="hover:text-emerald-400 transition"
+                referrerPolicy="no-referrer"
               >
-                Guest Expat
-              </button>
+                Welfare Desk
+              </a>
+              <div className="h-4 w-px bg-slate-700"></div>
               <button 
-                onClick={() => setSimulatedRole('member')}
-                className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-all ${simulatedRole === 'member' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                onClick={() => setShowSimulatorBar(false)}
+                className="text-slate-350 hover:text-red-400 transition cursor-pointer text-[10px] font-bold uppercase tracking-wider bg-slate-805 hover:bg-slate-800 px-2 py-0.5 rounded border border-slate-700"
+                title="Hide simulator banner"
               >
-                Approved Member (Amjad)
-              </button>
-              <button 
-                onClick={() => setSimulatedRole('admin')}
-                className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-all ${simulatedRole === 'admin' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Finance Sec. Admin (Ikram)
+                Hide ✕
               </button>
             </div>
           </div>
-
-          {/* Social icons & indicators */}
-          <div className="flex items-center gap-4.5 font-medium">
-            <span className="flex items-center gap-1.5 text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Muscat Server Live
-            </span>
-            <div className="h-4 w-px bg-slate-700"></div>
-            <a 
-              href="https://ais-dev-kwgj634upw3m2n2rbxh53o-469166214171.europe-west1.run.app" 
-              target="_blank" 
-              className="hover:text-emerald-400 transition"
-              referrerPolicy="no-referrer"
-            >
-              Welfare Desk
-            </a>
-          </div>
         </div>
-      </div>
+      )}
 
       {/* 🟢 HERO EMBASSY BANNER AREA */}
       <header className="relative bg-emerald-800 text-white py-10 px-6 overflow-hidden border-b-4 border-yellow-400 shadow-md">
@@ -807,6 +832,14 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* 📊 Live Community Insights Dashboard (Recharts pie/bar charts) */}
+                <CommunityDashboard 
+                  members={members} 
+                  donations={donations} 
+                  language={language} 
+                  isAdmin={simulatedRole === 'admin'}
+                />
 
                 {/* 3. News Feed and Embassy Details Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -1923,6 +1956,15 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* 👥 Verified Registered Members Directory Desk with Membership Cards */}
+                <AdminMembersDirectory 
+                  members={members}
+                  onApprove={approveMember}
+                  onReject={rejectMember}
+                  onDeleteMember={deleteMember}
+                  language={language}
+                />
+
                 {/* 4. Controls: Update Announcement banner & News Feed */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Announcement banner text updater */}
@@ -2021,6 +2063,8 @@ export default function App() {
                   onToggleAd={handleToggleAd} 
                   adminOnlyAds={adminOnlyAds}
                   onToggleAdminOnlyAds={() => setAdminOnlyAds(prev => !prev)}
+                  showSimulatorBar={showSimulatorBar}
+                  onToggleSimulatorBar={() => setShowSimulatorBar(prev => !prev)}
                 />
               </div>
             )
