@@ -33,6 +33,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Member, EmergencyReport, Donation, CabinetMember, NewsItem, Election, Language } from './types';
 import { i18nTranslations } from './i18n';
 import { initialCabinet, initialNews, initialMembers, initialReports, initialDonations, initialElections } from './initialData';
+import { DigitalMemberId } from './components/DigitalMemberId';
 
 export default function App() {
   // --- States ---
@@ -133,6 +134,13 @@ export default function App() {
 
   // Donation Search & Filter ledger
   const [donationSearchQuery, setDonationSearchQuery] = useState('');
+
+  // Active member selected for card viewing or searching
+  const [selectedIDMember, setSelectedIDMember] = useState<Member | null>(null);
+
+  const currentMember = useMemo(() => {
+    return members.find(m => m.id === 'user-1' && m.status === 'approved') || members.find(m => m.status === 'approved') || null;
+  }, [members]);
 
   // Vote tracker (prevents voting twice in same tab)
   const [votedIds, setVotedIds] = useState<string[]>(() => {
@@ -694,6 +702,27 @@ export default function App() {
                       </li>
                     </ul>
                   </div>
+                </div>
+
+                {/* 1.5 Digital Welfare Membership Card Badge */}
+                <div className="space-y-4">
+                  <div className="border-l-4 border-emerald-700 pl-4 py-1">
+                    <h3 className="text-lg md:text-xl font-bold font-display text-gray-900 leading-normal">
+                      {simulatedRole === 'member' ? 'Your Digital Welfare Membership Badge (اپنا ڈیجیٹل کارڈ)' : 'Verified Digital Member ID Portal (تصدیقی کارڈ سروس)'}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {simulatedRole === 'member' 
+                        ? 'Your credentials are of active verified status. You can preview, 3D flip, print, or download your security card below.' 
+                        : 'Secure registry lookup for Pakistani expats and laborers. Check identity credentials, print badges, or verify voting power.'}
+                    </p>
+                  </div>
+
+                  <DigitalMemberId 
+                    member={selectedIDMember || currentMember || members.find(m => m.status === 'approved') || members[0]} 
+                    showLookupFeature={true}
+                    allApprovedMembers={members}
+                    onSelectMember={(m) => setSelectedIDMember(m)}
+                  />
                 </div>
 
                 {/* 2. Interactive High-Crafstmanship Stats Widgets */}
