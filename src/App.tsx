@@ -35,6 +35,8 @@ import { i18nTranslations } from './i18n';
 import { initialCabinet, initialNews, initialMembers, initialReports, initialDonations, initialElections, initialAds } from './initialData';
 import { DigitalMemberId } from './components/DigitalMemberId';
 import { AdBillboard } from './components/AdBillboard';
+import pukhtoonLogo from './assets/images/pukhtoon_logo_1780560085059.png';
+import omanLandscape from './assets/images/oman_landscape_1780560990120.png';
 import { AdManager } from './components/AdManager';
 import { CommunityDashboard } from './components/CommunityDashboard';
 import { AdminMembersDirectory } from './components/AdminMembersDirectory';
@@ -545,9 +547,19 @@ export default function App() {
 
   return (
     <div 
-      className="min-h-screen bg-gray-50 flex flex-col font-sans transition-all duration-300 antialiased"
+      className="min-h-screen bg-gray-50 flex flex-col font-sans transition-all duration-300 antialiased relative"
       dir={isRtl ? 'rtl' : 'ltr'}
     >
+      {/* Subtle Site-wide background watermark */}
+      <div className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center opacity-[0.02] select-none overflow-hidden">
+        <img 
+          src={pukhtoonLogo} 
+          alt="" 
+          className="w-[70vw] h-[70vw] max-w-[750px] max-h-[750px] object-contain rotate-6"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+
       {/* 🟢 TOP SIMULATOR & FLAG BAR */}
       {showSimulatorBar && (
         <div className="bg-slate-900 text-slate-100 py-2.5 px-4 text-xs border-b border-slate-800">
@@ -609,53 +621,55 @@ export default function App() {
       )}
 
       {/* 🟢 HERO EMBASSY BANNER AREA */}
-      <header className="relative bg-emerald-800 text-white py-10 px-6 overflow-hidden border-b-4 border-yellow-400 shadow-md">
-        <div className="absolute inset-0 z-0 opacity-15 overflow-hidden">
-          {/* Authentic background motifs via decorative shapes */}
-          <div className="absolute -top-16 -right-16 w-96 h-96 rounded-full bg-emerald-400 blur-3xl"></div>
-          <div className="absolute -bottom-16 -left-16 w-96 h-96 rounded-full bg-yellow-300 blur-3xl"></div>
-        </div>
+      <header className="relative bg-cover bg-center text-white py-16 px-6 md:px-12 overflow-hidden border-b-4 border-yellow-400 shadow-2xl" style={{ backgroundImage: `url(${omanLandscape})` }}>
+        <div className="absolute inset-0 z-0 bg-gradient-to-r from-gray-950/95 via-emerald-950/85 to-indigo-950/40 backdrop-blur-xs"></div>
 
-        <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4.5">
-            {/* Beautiful Custom Circular Pakistan & Oman Flags Motif logo */}
-            <div className="w-20 h-20 bg-white rounded-full p-1.5 shadow-lg flex items-center justify-center border-2 border-yellow-400 relative shrink-0">
-              {/* Omani-Pakistani alliance symbolic visual */}
-              <div className="w-full h-full rounded-full bg-emerald-700 overflow-hidden flex flex-col justify-between">
-                <div className="h-1/2 bg-rose-600 flex items-center justify-center text-[10px] font-bold text-white tracking-widest uppercase">OMAN</div>
-                <div className="h-1/2 bg-emerald-800 flex items-center justify-center text-[10px] font-bold text-white tracking-widest uppercase border-t border-yellow-300">PAK</div>
-              </div>
-              <span className="absolute -bottom-1 right-0 bg-yellow-400 text-emerald-950 font-bold px-1.5 py-0.5 rounded text-[8px] tracking-wide border border-white">
+        <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex items-center gap-5">
+            {/* Beautiful Official Pukhtoon Community Logo */}
+            <div className="w-24 h-24 bg-white/95 rounded-full p-1.5 shadow-xl flex items-center justify-center border-3 border-yellow-400 relative shrink-0">
+              <img 
+                src={pukhtoonLogo} 
+                alt="Pukhtoon Community Logo" 
+                className="w-full h-full rounded-full object-contain bg-white"
+                referrerPolicy="no-referrer"
+              />
+              <span className="absolute -bottom-1 right-1 bg-yellow-400 text-emerald-950 font-black px-2 py-0.5 rounded text-[9px] tracking-wide border border-white">
                 PORTAL
               </span>
             </div>
 
-            <div className={`${isRtl ? 'text-right' : 'text-left'}`}>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight font-display text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-yellow-200">
+            <div className={`${isRtl ? 'text-right' : 'text-left'} space-y-1.5`}>
+              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight font-display text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-100 to-yellow-300">
                 {t('appTitle')}
               </h1>
-              <p className="text-sm md:text-base text-emerald-100 font-medium max-w-2xl mt-1.5 font-sans leading-relaxed">
+              <p className="text-sm md:text-lg text-emerald-100/90 font-medium max-w-2xl font-sans leading-relaxed">
                 {t('appSubtitle')}
               </p>
-              <span className="inline-block mt-2 font-semibold text-yellow-300 text-xs px-2.5 py-1 rounded-full bg-emerald-900/50 border border-emerald-700/60 font-urdu tracking-wide">
-                {t('appSlogan')}
-              </span>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className="inline-block font-black text-yellow-400 text-xs px-3.5 py-1 rounded-full bg-emerald-950/80 border border-yellow-500/25 font-urdu tracking-wide">
+                  {t('appSlogan')}
+                </span>
+                <span className="text-[10px] bg-yellow-400/10 text-yellow-300 border border-yellow-400/25 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                  🇴🇲 Sultanate of Oman
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Language Selector Selector Component */}
-          <div className="flex items-center gap-3 bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-700/50 backdrop-blur-xs">
-            <Globe className="w-4 h-4 text-yellow-400 shrink-0" />
-            <span className="text-xs text-emerald-200 font-medium whitespace-nowrap">{t('switchLanguage')}:</span>
+          {/* Language Selector Selector Component with glassmorphic effect */}
+          <div className="flex items-center gap-3 bg-gray-950/75 p-3 rounded-2xl border border-yellow-400/20 shadow-xl backdrop-blur-md">
+            <Globe className="w-4 h-4 text-yellow-450 shrink-0" />
+            <span className="text-xs text-slate-300 font-bold whitespace-nowrap">{t('switchLanguage')}:</span>
             <div className="flex gap-1.5">
               {(['en', 'ur', 'ps'] as Language[]).map((ln) => (
                 <button
                   key={ln}
                   onClick={() => setLanguage(ln)}
-                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                  className={`px-3.5 py-1.5 text-xs font-black rounded-xl transition-all ${
                     language === ln 
-                      ? 'bg-yellow-400 text-emerald-950 shadow-sm' 
-                      : 'text-white hover:bg-emerald-900/80 hover:text-yellow-200'
+                      ? 'bg-yellow-450 text-slate-950 shadow-sm' 
+                      : 'text-slate-300 hover:bg-white/10 hover:text-yellow-300'
                   }`}
                 >
                   {ln === 'en' ? 'English' : ln === 'ur' ? 'اردو' : 'پښتو'}
@@ -682,7 +696,7 @@ export default function App() {
       </div>
 
       {/* 🟢 MAIN NAVIGATION BAR */}
-      <nav className="bg-white shadow-xs border-b border-gray-200 sticky top-0 z-40 transition-all duration-150">
+      <nav className="glass-nav sticky top-0 z-40 transition-all duration-150 shadow-xl">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-14 overflow-x-auto no-scrollbar scroll-smooth">
             <div className="flex space-x-1 sm:space-x-2 md:space-x-3 shrink-0 py-1.5">
@@ -702,13 +716,13 @@ export default function App() {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-2 px-3 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all transform duration-150 whitespace-nowrap shrink-0 relative ${
+                    className={`flex items-center gap-2 px-3.5 py-2 text-xs md:text-sm font-bold rounded-xl transition-all transform duration-150 whitespace-nowrap shrink-0 relative ${
                       isActive 
-                        ? 'bg-emerald-50 text-emerald-800 shadow-xs border border-emerald-200' 
-                        : 'text-gray-600 hover:text-emerald-700 hover:bg-gray-100'
+                        ? 'bg-yellow-400/10 text-yellow-450 shadow-md border border-yellow-400/30' 
+                        : 'text-slate-200 hover:text-yellow-400 hover:bg-white/5'
                     }`}
                   >
-                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-emerald-700' : 'text-gray-400'}`} />
+                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-yellow-450' : 'text-slate-400'}`} />
                     <span>{item.label}</span>
                     {item.count && item.count > 0 ? (
                       <span className="absolute -top-1 -right-1 bg-rose-600 text-white font-extrabold text-[10px] w-4 h-4 rounded-full flex items-center justify-center animate-bounce">
@@ -726,6 +740,15 @@ export default function App() {
         </div>
       </nav>
 
+      {/* 📢 Full-width Sponsored Advertisement Billboard Slider */}
+      {activeTab === 'home' && (
+        <div className="w-full bg-slate-950/20 border-b border-yellow-500/10 py-6 px-4 md:px-8 shadow-2xl relative z-10">
+          <div className="max-w-7xl mx-auto">
+            <AdBillboard ads={ads} language={language} adminOnlyAds={adminOnlyAds} />
+          </div>
+        </div>
+      )}
+
       {/* 🟢 PORTAL CONTENT VIEW WRAPPER */}
       <main className="grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         <AnimatePresence mode="wait">
@@ -740,54 +763,51 @@ export default function App() {
             {activeTab === 'home' && (
               <div className="space-y-8">
                 {/* 1. Welcoming Hero Segment */}
-                <div className="bg-white rounded-2xl border border-gray-200/80 p-6 md:p-8 shadow-xs flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full z-0 opacity-50"></div>
+                <div className="glass-card p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/5 rounded-bl-full z-0 opacity-45"></div>
                   <div className="space-y-4 md:flex-1 relative z-10">
-                    <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight font-display">
+                    <h2 className="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight font-display">
                       {t('appTitle')}
                     </h2>
-                    <p className="text-gray-600 leading-relaxed text-sm md:text-base">
+                    <p className="text-slate-300 leading-relaxed text-sm md:text-base">
                       {t('welcomeMessage')}
                     </p>
                     <div className="flex gap-3 flex-wrap">
                       <button 
                         onClick={() => setActiveTab('register')}
-                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-5 py-3 rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer"
+                        className="bg-yellow-450 hover:bg-yellow-500 text-slate-950 font-black text-xs px-5 py-3 rounded-xl transition shadow-md flex items-center gap-2 cursor-pointer active:scale-98"
                       >
                         <UserPlus className="w-4 h-4" /> {t('navRegister')}
                       </button>
                       <button 
                         onClick={() => setActiveTab('donations')}
-                        className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 font-bold text-xs px-5 py-3 rounded-xl transition flex items-center gap-2 cursor-pointer"
+                        className="bg-slate-950/70 hover:bg-[#0f193c] text-yellow-400 border border-yellow-400/30 hover:border-yellow-400 font-bold text-xs px-5 py-3 rounded-xl transition flex items-center gap-2 cursor-pointer active:scale-98"
                       >
                         <Heart className="w-4 h-4 text-rose-500" /> Support Welfare Fund
                       </button>
                     </div>
                   </div>
 
-                  <div className="w-full md:w-80 space-y-3.5 shrink-0 z-10 bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/20">
-                    <h4 className="text-xs uppercase font-extrabold tracking-wider text-emerald-950 flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-emerald-700" /> Welfare Scope Benefits
+                  <div className="w-full md:w-80 space-y-3.5 shrink-0 z-10 bg-slate-950/70 p-5 rounded-2xl border border-yellow-400/20 shadow-md">
+                    <h4 className="text-xs uppercase font-extrabold tracking-wider text-yellow-400 flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-yellow-400" /> Welfare Scope Benefits
                     </h4>
-                    <ul className="text-xs text-gray-700 space-y-2 mt-2 leading-relaxed">
+                    <ul className="text-xs text-slate-300 space-y-2 mt-2 leading-relaxed">
                       <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
                         <span><strong>Meyyat Body Transit</strong>: Instant cost compensation and support (500 OMR dispatch).</span>
                       </li>
                       <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
                         <span><strong>Direct Consular backings</strong>: Fast-track labor permits, passport renewals & legal aid.</span>
                       </li>
                       <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
                         <span><strong>Blood & Casualty Drives</strong>: 124+ registered blood donors directory matching emergency calls.</span>
                       </li>
                     </ul>
                   </div>
                 </div>
-
-                {/* 📢 Sponsored Advertisement Billboard Block */}
-                <AdBillboard ads={ads} language={language} adminOnlyAds={adminOnlyAds} />
 
                 {/* 1.5 Digital Welfare Membership Card Badge */}
                 <div className="space-y-4">

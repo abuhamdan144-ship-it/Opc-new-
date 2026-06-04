@@ -85,3 +85,4 @@ export interface Advertisement {
 }
 
 export type Language = 'en' | 'ur' | 'ps';
+

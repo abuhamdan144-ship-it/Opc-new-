@@ -1,65 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Helvetica Neue", Arial, sans-serif;
-  --font-display: Georgia, serif;
-  --font-urdu: "Noto Nastaliq Urdu", Georgia, serif;
-  
-  /* Natural Tones palette variables */
-  --color-bg-natural: #f5f5f0;
-  --color-olive: #5a5a40;
-  --color-stone: #a8a090;
-  --color-clay: #d4a373;
-  --color-ink: #2d2926;
-  --color-white: #ffffff;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-urdu: "Noto Nastaliq Urdu", "Inter", sans-serif;
 
-  /* Overwrite default emerald palette with Natural Tones Olive */
-  --color-emerald-50: #f5f5f0;
-  --color-emerald-100: #e5e5dc;
-  --color-emerald-200: #d5d5ca;
-  --color-emerald-300: #c5c5b8;
-  --color-emerald-400: #a5a590;
-  --color-emerald-500: #85856b;
-  --color-emerald-600: #707050;
-  --color-emerald-700: #5a5a40; /* Olive Green default */
-  --color-emerald-800: #4a4a35;
-  --color-emerald-900: #3a3a2a;
-  --color-emerald-950: #2d2926; /* Ink color */
+  /* Luxury deep midnight blue mapping to Emerald keys */
+  --color-emerald-50: #0a122e;
+  --color-emerald-100: #101c40;
+  --color-emerald-200: #162657;
+  --color-emerald-300: #1e3371;
+  --color-emerald-400: #26408a;
+  --color-emerald-500: #345ebd;
+  --color-emerald-600: #294fa3;
+  --color-emerald-700: #1c387c; /* Classic deep noble blue */
+  --color-emerald-800: #11255e;
+  --color-emerald-900: #0a173d;
+  --color-emerald-950: #050b1f; /* core deep black navy */
 
-  /* Overwrite gray/slate to match the natural stone / ink style */
-  --color-gray-50: #fbfbfa;
-  --color-gray-100: #f5f5f0; /* natural bg */
-  --color-gray-200: #e5e5dc; /* stone boundary */
-  --color-gray-300: #d5d5ca;
-  --color-gray-400: #c5c5b8;
-  --color-gray-500: #a8a090; /* Stone secondary default */
-  --color-gray-600: #8a8275;
-  --color-gray-700: #6d665a;
-  --color-gray-800: #4f4b43;
-  --color-gray-900: #2d2926; /* Ink default */
+  /* Clay & Yellow standard mapping to Pure Gold Metallic Accents */
+  --color-yellow-50: #fffefa;
+  --color-yellow-105: #fef8dd;
+  --color-yellow-200: #fdf0ad;
+  --color-yellow-300: #fbdc6d;
+  --color-yellow-400: #ffd700; /* Brilliant Gold */
+  --color-yellow-500: #d4a337; /* Burnished Gold */
+  --color-yellow-600: #b58529;
+  --color-yellow-700: #8c631c;
+  --color-yellow-800: #664714;
+  --color-yellow-950: #332007;
 
-  /* Overwrite yellow/amber palette with Clay brown/gold */
-  --color-yellow-50: #fbf7f4;
-  --color-yellow-100: #f6ede3;
-  --color-yellow-200: #ebd6c1;
-  --color-yellow-300: #e2be9b;
-  --color-yellow-400: #d4a373; /* Terracotta/Clay default */
-  --color-yellow-500: #c29160;
-  --color-yellow-600: #a8794c;
-  --color-yellow-700: #8c603a;
-  --color-yellow-800: #704b2b;
-  --color-yellow-900: #5a3c22;
-  --color-yellow-950: #3b2513;
+  /* Body background & high-contrast text mapping to Gray */
+  --color-gray-50: #050814;    /* Ultra Deep Dark Space */
+  --color-gray-100: #0a1128;   /* Default Card Base (Glass Background) */
+  --color-gray-200: #162447;   /* Borders standard */
+  --color-gray-300: #24355f;
+  --color-gray-400: #475569;   /* Slate Muted */
+  --color-gray-500: #94a3b8;   /* Muted readable gray */
+  --color-gray-600: #cbd5e1;
+  --color-gray-750: #e2e8f0;
+  --color-gray-800: #f1f5f9;   /* Light stone soft */
+  --color-gray-900: #ffffff;   /* Pure White */
+
+  /* Shadow overlays for Gold theme */
+  --shadow-xs: 0 1px 3px 0 rgba(255, 215, 0, 0.05);
+  --shadow-md: 0 4px 12px -2px rgba(5, 11, 31, 0.4), 0 2px 6px -1px rgba(255, 215, 0, 0.06);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(255, 215, 0, 0.08);
 }
 
 @layer utilities {
-  /* RTL specific stylings if needed */
   .rtl-flip {
     transform: scaleX(-1);
   }
 }
 
-/* Custom marquee utilities */
+/* Glassmorphic custom properties for modern layout blur cards */
+.glass-card {
+  background: rgba(10, 18, 44, 0.65) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(255, 215, 0, 0.15) !important;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45) !important;
+}
+
+.glass-card-hover:hover {
+  background: rgba(16, 28, 64, 0.75) !important;
+  border-color: rgba(255, 215, 0, 0.3) !important;
+  box-shadow: 0 15px 45px 0 rgba(255, 215, 0, 0.06) !important;
+}
+
+.glass-nav {
+  background: rgba(10, 17, 36, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.12) !important;
+}
+
+.glass-input {
+  background: rgba(5, 8, 20, 0.5) !important;
+  border: 1px solid rgba(255, 215, 0, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.glass-input:focus {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2) !important;
+}
+
 @keyframes marquee {
   0% { transform: translateX(100%); }
   100% { transform: translateX(-100%); }
@@ -81,4 +109,3 @@
 .animate-float {
   animation: float 4s ease-in-out infinite;
 }
-

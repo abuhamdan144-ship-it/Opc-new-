@@ -19,6 +19,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { Member } from '../types';
+import pukhtoonLogo from '../assets/images/pukhtoon_logo_1780560085059.png';
 
 interface DigitalMemberIdProps {
   member: Member;
@@ -216,6 +217,10 @@ export const DigitalMemberId: React.FC<DigitalMemberIdProps> = ({
             .blood-badge { display: inline-flex; align-items: center; gap: 2px; color: #f43f5e; font-weight: 800; background: rgba(244,63,94,0.1); padding: 1px 4px; border-radius: 3px; font-size: 10px; width: fit-content; }
             .card-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px dashed rgba(212, 163, 115, 0.3); pt: 8px; font-size: 8px; color: #a8a090; margin-top: auto; }
             .qr-placeholder-white { background: white; padding: 4px; border-radius: 8px; width: 55px; height: 55px; display: flex; items-center; justify-content: center; }
+            .watermark-decor { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.12; pointer-events: none; z-index: 1; }
+            .watermark-img { width: 170px; height: 170px; object-fit: contain; transform: rotate(12deg); }
+            .card-header, .card-body, .card-footer { position: relative; z-index: 10; }
+            .logo-box { width: 34px; height: 34px; background: white; border-radius: 50%; padding: 2px; border: 1.5px solid #d4a373; display: flex; align-items: center; justify-content: center; margin-right: 8px; shrink-0: 0; }
             .button-container { margin-top: 25px; display: flex; gap: 10px; }
             .btn { background: #065f46; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 13px; }
             .btn-sec { background: transparent; color: #4b5563; border: 1px solid #d1d5db; }
@@ -229,8 +234,13 @@ export const DigitalMemberId: React.FC<DigitalMemberIdProps> = ({
         <body>
           <div class="card-container">
             <div class="hologram-decor"></div>
+            <div class="watermark-decor">
+              <img class="watermark-img" src="${pukhtoonLogo}" />
+            </div>
             <div class="card-header">
-              <span class="flag-box">🇵🇰 🇴🇲</span>
+              <div class="logo-box">
+                <img src="${pukhtoonLogo}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: contain;" />
+              </div>
               <div>
                 <h3 class="title-p">Oman Pakhtoon Community</h3>
                 <p class="subtitle-p">Federal Welfare Trust Registry</p>
@@ -417,10 +427,27 @@ export const DigitalMemberId: React.FC<DigitalMemberIdProps> = ({
                 <div className="absolute inset-0 bg-linear-gradient(45deg,rgba(255,255,255,0)_40%,rgba(255,255,255,0.08)_50%,rgba(255,255,255,0)_60%) bg-[size:200%_200%] animate-lightSweep pointer-events-none"></div>
                 <div className="absolute -right-12 -bottom-12 w-44 h-44 bg-white/[0.02] border border-white/[0.04] rounded-full"></div>
 
+                {/* Subtle Official Logo Watermark in Background */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.15] select-none">
+                  <img 
+                    src={pukhtoonLogo} 
+                    alt="" 
+                    className="w-[190px] h-[190px] object-contain rotate-12"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+
                 {/* Card Top Title Block */}
-                <div className="flex items-center justify-between border-b border-yellow-400/35 pb-2">
+                <div className="flex items-center justify-between border-b border-yellow-400/35 pb-2 relative z-10">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl leading-none">🇵🇰 🇴🇲</span>
+                    <div className="w-8 h-8 rounded-full bg-white p-0.5 border border-yellow-400/90 shadow-sm flex items-center justify-center shrink-0">
+                      <img 
+                        src={pukhtoonLogo} 
+                        alt="Logo" 
+                        className="w-full h-full rounded-full object-contain"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
                     <div>
                       <h3 className="text-xs font-black uppercase tracking-wider font-display text-white">
                         Oman Pakhtoon Community
@@ -507,9 +534,19 @@ export const DigitalMemberId: React.FC<DigitalMemberIdProps> = ({
                 }}
               >
                 <div className="absolute inset-0 bg-noise opacity-5 pointer-events-none"></div>
+                
+                {/* Subtle back watermark logo */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] select-none">
+                  <img 
+                    src={pukhtoonLogo} 
+                    alt="" 
+                    className="w-[170px] h-[170px] object-contain rotate-45"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
 
                 {/* Card Back Header */}
-                <div className="border-b border-gray-700 pb-1.5 flex justify-between items-center text-left">
+                <div className="border-b border-gray-700 pb-1.5 flex justify-between items-center text-left relative z-10">
                   <span className="text-[9px] font-black text-yellow-400 tracking-wider font-display">
                     OPC WELFARE CODE & REGULATIONS
                   </span>
@@ -517,8 +554,8 @@ export const DigitalMemberId: React.FC<DigitalMemberIdProps> = ({
                 </div>
 
                 {/* Card Back Content list */}
-                <div className="my-1.5 text-left space-y-1.5 text-[8.5px] leading-relaxed text-gray-200">
-                  <div className="bg-emerald-950/40 p-2 rounded border border-emerald-900/35">
+                <div className="my-1.5 text-left space-y-1.5 text-[8.5px] leading-relaxed text-gray-200 relative z-10">
+                  <div className="bg-emerald-950/45 p-2 rounded border border-emerald-900/35 backdrop-blur-xs">
                     <p className="font-black text-white flex items-center gap-1 text-[8.5px]">
                       <span className="w-1.5 h-1.5 rounded-full bg-yellow-400"></span> 500 OMR Immediate Meyyat Compensation:
                     </p>
@@ -545,7 +582,7 @@ export const DigitalMemberId: React.FC<DigitalMemberIdProps> = ({
                 </div>
 
                 {/* Card Back Footer Block */}
-                <div className="border-t border-gray-700/60 pt-2 flex items-center justify-between text-[7px] text-gray-400">
+                <div className="border-t border-gray-700/60 pt-2 flex items-center justify-between text-[7px] text-gray-400 relative z-10">
                   <div className="space-y-0.5 text-left">
                     <span>Validation UID: {member.id}</span>
                     <span className="block">Welfare Council established since Dec 1998</span>

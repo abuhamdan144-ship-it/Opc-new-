@@ -103,18 +103,18 @@ export const AdBillboard: React.FC<AdBillboardProps> = ({ ads, language = 'en', 
   return (
     <div 
       id="advertisement_billboard_carousel" 
-      className="bg-white rounded-2xl border border-gray-250 shadow-xs overflow-hidden relative"
+      className="glass-card rounded-3xl border border-yellow-450/20 shadow-2xl hover:border-yellow-400/40 transition-all duration-300 overflow-hidden relative"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* Billboard Heading Overlay */}
-      <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-emerald-800/95 text-white px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider backdrop-blur-xs border border-emerald-600/50 shadow-sm shadow-black/10">
-        <Megaphone className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
+      <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-slate-950/90 text-white px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider backdrop-blur-md border border-yellow-400/30 shadow-md">
+        <Megaphone className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
         <span>OPC Paid Sponsor Board (اشتہار)</span>
       </div>
 
       {/* Expiry Badge to inspire authenticity of local dates */}
-      <div className="absolute top-3 right-3 z-20 flex items-center gap-1 bg-black/60 text-gray-100 px-2.5 py-1 rounded-md text-[9px] font-bold backdrop-blur-xs">
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-1 bg-black/75 text-gray-100 px-2.5 py-1 rounded-md text-[9px] font-bold backdrop-blur-md border border-white/5">
         <Clock className="w-3 h-3 text-yellow-400" />
         <span>
           {daysRemaining <= 0 ? 'Expires today' : `${daysRemaining} days remaining`}
@@ -123,56 +123,56 @@ export const AdBillboard: React.FC<AdBillboardProps> = ({ ads, language = 'en', 
 
       <div className="flex flex-col lg:flex-row h-full min-h-[190px]">
         {/* Ad Image Pane */}
-        <div className="lg:w-2/5 relative h-40 lg:h-auto min-h-[140px] bg-slate-900 shrink-0 overflow-hidden">
+        <div className="lg:w-2/5 relative h-40 lg:h-auto min-h-[140px] bg-slate-950 shrink-0 overflow-hidden">
           <img 
             src={currentAd.imageUrl} 
             alt={currentAd.title}
             className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
           />
-          <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-black/80 lg:from-transparent via-black/20 to-black/5 pb-2"></div>
+          <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-slate-950 via-slate-900/30 to-transparent pb-3"></div>
         </div>
 
         {/* Ad Content Details Pane */}
         <div className="flex-1 p-5 md:p-6 flex flex-col justify-between text-left space-y-4">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase bg-yellow-400 text-slate-900 px-2 py-0.5 rounded-sm">
+              <span className="text-[10px] font-black uppercase bg-yellow-400 text-slate-950 px-2.5 py-0.5 rounded">
                 Verified Sponsor
               </span>
-              <span className="text-[10px] text-gray-500 font-medium">
+              <span className="text-[10px] text-slate-400 font-bold">
                 By {currentAd.advertiserName}
               </span>
             </div>
 
-            <h3 className="text-base font-black text-gray-900 font-display tracking-tight leading-normal">
+            <h3 className="text-base md:text-lg font-extrabold text-slate-100 font-display tracking-tight leading-normal">
               {currentAd.title}
             </h3>
 
             {/* Urdu Subtitle Translation */}
             {(getUrduText(currentAd.id) || language === 'ur') && (
-              <p className="text-xs font-bold text-emerald-800 font-urdu leading-normal mt-1" dir="rtl">
+              <p className="text-xs font-bold text-yellow-400 font-urdu leading-normal mt-1" dir="rtl">
                 {getUrduText(currentAd.id) || 'اس اسپانسرڈ اشتہار کا وزٹ کریں اور پختون نیٹ ورک میں حصہ لیں'}
               </p>
             )}
 
             {currentAd.notes && (
-              <p className="text-xs text-gray-500 line-clamp-2 italic pt-1 font-sans">
+              <p className="text-xs text-slate-400 line-clamp-2 italic pt-1 font-sans">
                 &ldquo;{currentAd.notes}&rdquo;
               </p>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-150">
-            <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
-              <Calendar className="w-3.5 h-3.5 text-slate-450" />
-              <span>Sponsorship Expires: <strong>{currentAd.expiryDate}</strong></span>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-yellow-500/10">
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <Calendar className="w-3.5 h-3.5 text-yellow-400/70" />
+              <span>Sponsorship Expires: <strong className="text-slate-150">{currentAd.expiryDate}</strong></span>
             </div>
 
             <a 
               href={currentAd.targetUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-3xs"
+              className="bg-yellow-450 hover:bg-yellow-500 text-slate-950 font-black text-xs px-4.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-md border border-yellow-300/30"
             >
               <span>Visit/Contact Sponsor</span>
               <ExternalLink className="w-3 h-3" />
@@ -186,16 +186,16 @@ export const AdBillboard: React.FC<AdBillboardProps> = ({ ads, language = 'en', 
         <div className="absolute right-4 bottom-14 lg:bottom-4 flex items-center gap-1.5 z-10">
           <button 
             onClick={handlePrev}
-            className="w-7 h-7 bg-white/90 hover:bg-white text-gray-800 rounded-full flex items-center justify-center border border-gray-250 hover:border-emerald-600 transition shadow-3xs cursor-pointer"
+            className="w-7 h-7 bg-slate-950/85 hover:bg-slate-900 text-yellow-400 rounded-full flex items-center justify-center border border-yellow-500/30 hover:border-yellow-400 transition shadow-md cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-[10px] font-black text-gray-600 px-2 min-w-[32px] text-center bg-gray-100 rounded-md py-0.5 border">
+          <span className="text-[10px] font-black text-yellow-400 px-2 min-w-[32px] text-center bg-slate-950/90 rounded-md py-0.5 border border-yellow-500/20">
             {currentIndex + 1} / {activeAndUnexpiredAds.length}
           </span>
           <button 
             onClick={handleNext}
-            className="w-7 h-7 bg-white/90 hover:bg-white text-gray-800 rounded-full flex items-center justify-center border border-gray-250 hover:border-emerald-600 transition shadow-3xs cursor-pointer"
+            className="w-7 h-7 bg-slate-950/85 hover:bg-slate-900 text-yellow-400 rounded-full flex items-center justify-center border border-yellow-500/30 hover:border-yellow-400 transition shadow-md cursor-pointer"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
