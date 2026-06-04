@@ -91,6 +91,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialAds;
   });
 
+  const [adminOnlyAds, setAdminOnlyAds] = useState<boolean>(() => {
+    const saved = localStorage.getItem('opc_admin_only_ads');
+    return saved ? saved === 'true' : true; // Default to true (Only Admin Allowed to Run Ads)
+  });
+
   // User input states inside different forms
   // Registration Form
   const [regName, setRegName] = useState('');
@@ -191,6 +196,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('opc_ads', JSON.stringify(ads));
   }, [ads]);
+
+  useEffect(() => {
+    localStorage.setItem('opc_admin_only_ads', String(adminOnlyAds));
+  }, [adminOnlyAds]);
 
   useEffect(() => {
     localStorage.setItem('opc_voted_ids', JSON.stringify(votedIds));
@@ -728,7 +737,7 @@ export default function App() {
                 </div>
 
                 {/* 📢 Sponsored Advertisement Billboard Block */}
-                <AdBillboard ads={ads} language={language} />
+                <AdBillboard ads={ads} language={language} adminOnlyAds={adminOnlyAds} />
 
                 {/* 1.5 Digital Welfare Membership Card Badge */}
                 <div className="space-y-4">
@@ -2010,6 +2019,8 @@ export default function App() {
                   onAddAd={handleAddAd} 
                   onRemoveAd={handleRemoveAd} 
                   onToggleAd={handleToggleAd} 
+                  adminOnlyAds={adminOnlyAds}
+                  onToggleAdminOnlyAds={() => setAdminOnlyAds(prev => !prev)}
                 />
               </div>
             )

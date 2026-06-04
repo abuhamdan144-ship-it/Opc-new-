@@ -17,9 +17,10 @@ import { Advertisement } from '../types';
 interface AdBillboardProps {
   ads: Advertisement[];
   language?: 'en' | 'ur' | 'ps';
+  adminOnlyAds?: boolean;
 }
 
-export const AdBillboard: React.FC<AdBillboardProps> = ({ ads, language = 'en' }) => {
+export const AdBillboard: React.FC<AdBillboardProps> = ({ ads, language = 'en', adminOnlyAds = false }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -40,6 +41,9 @@ export const AdBillboard: React.FC<AdBillboardProps> = ({ ads, language = 'en' }
   }, [activeAndUnexpiredAds.length, isPaused]);
 
   if (activeAndUnexpiredAds.length === 0) {
+    if (adminOnlyAds) {
+      return null;
+    }
     return (
       <div id="no_ads_billboard" className="bg-gradient-to-r from-gray-50 to-gray-100 border border-dashed border-gray-300 rounded-2xl p-6 text-center space-y-3">
         <div className="w-12 h-12 bg-gray-200/60 rounded-full flex items-center justify-center mx-auto">

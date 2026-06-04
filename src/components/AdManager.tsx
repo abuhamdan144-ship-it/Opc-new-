@@ -26,6 +26,8 @@ interface AdManagerProps {
   onAddAd: (newAd: Advertisement) => void;
   onRemoveAd: (id: string) => void;
   onToggleAd: (id: string) => void;
+  adminOnlyAds: boolean;
+  onToggleAdminOnlyAds: () => void;
 }
 
 const PRESET_IMAGES = [
@@ -51,7 +53,14 @@ const PRESET_IMAGES = [
   }
 ];
 
-export const AdManager: React.FC<AdManagerProps> = ({ ads, onAddAd, onRemoveAd, onToggleAd }) => {
+export const AdManager: React.FC<AdManagerProps> = ({ 
+  ads, 
+  onAddAd, 
+  onRemoveAd, 
+  onToggleAd,
+  adminOnlyAds,
+  onToggleAdminOnlyAds
+}) => {
   // Input fields state
   const [title, setTitle] = useState('');
   const [advertiserName, setAdvertiserName] = useState('');
@@ -175,6 +184,47 @@ export const AdManager: React.FC<AdManagerProps> = ({ ads, onAddAd, onRemoveAd, 
             <span className="text-[9px] uppercase font-bold text-emerald-950 block leading-none">Billboard Treasury Balance</span>
             <strong className="text-emerald-800 text-sm font-black block leading-none">{totalSponsorsRevenue} OMR Collected</strong>
           </div>
+        </div>
+      </div>
+
+      {/* ⚙️ SYSTEM SETTING: "Only Admin Allowed To Run Ads" */}
+      <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-left">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-amber-800 bg-amber-100 text-[10px] font-black px-2 py-0.5 rounded-md uppercase">
+              Security Override
+            </span>
+            <h4 className="text-xs font-black text-gray-900 uppercase tracking-tight">
+              Sponsorship Campaign Visibility Settings
+            </h4>
+          </div>
+          <p className="text-[11px] text-gray-650 leading-relaxed max-w-2xl font-sans">
+            By default, when active campaigns expire, a public invitation box for Pakhtoon expats is displayed. Enabling the restriction hides the placeholder and ensures <strong>strictly official admin-published campaigns only</strong> are permitted to run.
+          </p>
+        </div>
+
+        <div className="shrink-0 flex items-center gap-2 w-full md:w-auto">
+          <button
+            type="button"
+            onClick={onToggleAdminOnlyAds}
+            className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-black transition-all w-full justify-center md:w-auto md:justify-start ${
+              adminOnlyAds 
+                ? 'bg-amber-600 border-amber-500 text-white shadow-3xs' 
+                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            {adminOnlyAds ? (
+              <>
+                <ToggleRight className="w-5 h-5 shrink-0" />
+                <span>Only Admin Can Run Ads (صرف ایڈمن)</span>
+              </>
+            ) : (
+              <>
+                <ToggleLeft className="w-5 h-5 shrink-0 text-gray-400" />
+                <span>Open for Public Offers (عوام کے لیے کھلا ہے)</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
