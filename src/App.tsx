@@ -45,6 +45,7 @@ import { t } from './i18n';
 import { generateDonationReceipt } from './utils/receiptGenerator';
 import { CommunityDashboard } from './components/CommunityDashboard';
 import { AdminMembersDirectory } from './components/AdminMembersDirectory';
+import { AdminControlPanel } from './components/AdminControlPanel';
 
 export default function App() {
   // --- Localisation State ---
@@ -159,6 +160,11 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('opc_role', activeRole);
+    if (activeRole === 'admin') {
+      setActiveTab('admin_control');
+    } else if (activeTab === 'admin_control') {
+      setActiveTab('dashboard');
+    }
   }, [activeRole]);
 
   // Visual billboard slider timer transition
@@ -388,6 +394,96 @@ export default function App() {
     }
   };
 
+  const handleDeleteDonationOnDB = async (id: string) => {
+    const updated = donations.filter(d => d.id !== id);
+    setDonations(updated);
+    if (isOnline) {
+      await deleteDocument('donations', id);
+    }
+  };
+
+  const handleUpdateReportStatusOnDB = async (id: string, status: 'pending' | 'verified' | 'resolved') => {
+    const updated = reports.map(r => r.id === id ? { ...r, status } : r);
+    setReports(updated);
+    if (isOnline) {
+      const match = updated.find(r => r.id === id);
+      if (match) await saveDocument('reports', id, match);
+    }
+  };
+
+  const handleDeleteReportOnDB = async (id: string) => {
+    const updated = reports.filter(r => r.id !== id);
+    setReports(updated);
+    if (isOnline) {
+      await deleteDocument('reports', id);
+    }
+  };
+
+  const handleAddNewsItemOnDB = async (newItem: NewsItem) => {
+    const updated = [newItem, ...news];
+    setNews(updated);
+    if (isOnline) {
+      await saveDocument('news', newItem.id, newItem);
+    }
+  };
+
+  const handleDeleteNewsItemOnDB = async (id: string) => {
+    const updated = news.filter(n => n.id !== id);
+    setNews(updated);
+    if (isOnline) {
+      await deleteDocument('news', id);
+    }
+  };
+
+  const handleAddElectionOnDB = async (newElection: Election) => {
+    const updated = [newElection, ...elections];
+    setElections(updated);
+    if (isOnline) {
+      await saveDocument('elections', newElection.id, newElection);
+    }
+  };
+
+  const handleDeleteElectionOnDB = async (id: string) => {
+    const updated = elections.filter(e => e.id !== id);
+    setElections(updated);
+    if (isOnline) {
+      await deleteDocument('elections', id);
+    }
+  };
+
+  const handleAddAdBannerOnDB = async (newAd: Advertisement) => {
+    const updated = [newAd, ...ads];
+    setAds(updated);
+    if (isOnline) {
+      await saveDocument('advertisements', newAd.id, newAd);
+    }
+  };
+
+  const handleDeleteAdBannerOnDB = async (id: string) => {
+    const updated = ads.filter(a => a.id !== id);
+    setAds(updated);
+    if (isOnline) {
+      await deleteDocument('advertisements', id);
+    }
+  };
+
+  const handleToggleAdActiveOnDB = async (id: string) => {
+    const updated = ads.map(a => a.id === id ? { ...a, isActive: !a.isActive } : a);
+    setAds(updated);
+    if (isOnline) {
+      const match = updated.find(a => a.id === id);
+      if (match) await saveDocument('advertisements', id, match);
+    }
+  };
+
+  const handleDeleteContactMsgOnDB = async (id: string) => {
+    const updated = messages.filter(m => m.id !== id);
+    setMessages(updated);
+    if (isOnline) {
+      await deleteDocument('contactMessages', id);
+    }
+  };
+
   // --- Dynamic Ad elements ---
   const currentAd = ads[activeAdIndex] || null;
 
@@ -546,6 +642,20 @@ export default function App() {
             <p className="text-slate-400 text-[10px] font-mono uppercase tracking-widest font-bold px-3 pb-2 border-b border-slate-800">
               Cabinet Portal Index
             </p>
+
+            {activeRole === 'admin' && (
+              <button 
+                onClick={() => setActiveTab('admin_control')}
+                className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-black tracking-wide border transition duration-150 cursor-pointer ${
+                  activeTab === 'admin_control' 
+                    ? 'bg-red-650 text-white border-red-500 shadow-lg shadow-red-950/50' 
+                    : 'text-red-400 bg-red-950/10 border-red-900/35 hover:bg-red-950/20 hover:text-red-300'
+                }`}
+              >
+                <ShieldAlert className="w-4 h-4 text-red-500 animate-pulse" />
+                <span>Administrative Desk</span>
+              </button>
+            )}
             
             <button 
               onClick={() => setActiveTab('dashboard')}
@@ -618,6 +728,51 @@ export default function App() {
           {/* TAB 1: Analytical WELFARE COVER DASHBOARD */}
           {activeTab === 'dashboard' && (
             <CommunityDashboard members={members} donations={donations} reports={reports} />
+          )}
+
+          {/* TAB 9: ADMINISTRATIVE MASTER TRUSTEE PANEL (Cabinet Control Panel) */}
+          {activeTab === 'admin_control' && activeRole === 'admin' && (
+            <AdminControlPanel 
+              members={members}
+              donations={donations}
+              reports={reports}
+              elections={elections}
+              news={news}
+              ads={ads}
+              messages={messages}
+              language={lang}
+              isOnline={isOnline}
+              
+              // Member actions
+              onApproveMember={handleApproveMemberOnDB}
+              onRejectMember={handleRejectMemberOnDB}
+              onDeleteMember={handleDeleteMemberOnDB}
+              
+              // Donation audit actions
+              onApproveDonation={handleApproveDonationOnDB}
+              onRejectDonation={handleRejectDonationOnDB}
+              onDeleteDonation={handleDeleteDonationOnDB}
+              
+              // Emergency triage updates
+              onUpdateReportStatus={handleUpdateReportStatusOnDB}
+              onDeleteReport={handleDeleteReportOnDB}
+              
+              // News broadcasts
+              onAddNewsItem={handleAddNewsItemOnDB}
+              onDeleteNewsItem={handleDeleteNewsItemOnDB}
+              
+              // Ballot management
+              onAddElection={handleAddElectionOnDB}
+              onDeleteElection={handleDeleteElectionOnDB}
+              
+              // Advertiser manager
+              onAddAdBanner={handleAddAdBannerOnDB}
+              onDeleteAdBanner={handleDeleteAdBannerOnDB}
+              onToggleAdActive={handleToggleAdActiveOnDB}
+              
+              // Suggestions desk
+              onDeleteMessage={handleDeleteContactMsgOnDB}
+            />
           )}
 
           {/* TAB 2: REGISTERED MEMBERS DIRECTORY TABLE */}
