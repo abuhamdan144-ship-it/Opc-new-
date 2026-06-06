@@ -3,10 +3,41 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Digital Welfare Membership Card, Emergency Welfare Assistance, & Audited Donation Ledger Portal for Omani Pakhtoon labor community." />
+    <!-- Theme Color for browsers -->
+    <meta name="theme-color" content="#0b0f19" />
+    
+    <!-- Open Graph / Social Sharing Metadata -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Oman Pakhtoon Community Welfare Portal" />
+    <meta property="og:description" content="Secure platform for Digital Welfare Cards, emergency triage reports, and real-time verifiable donation ledgers." />
+    <meta property="og:site_name" content="Oman Pakhtoon Welfare" />
+
+    <!-- Premium Icon / Favicon setup using inline colored SVG of a shield and crescent/star emblem -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eab308'%3E%3Cpath d='M12 2C11.5 2 6 4 6 4V11C6 16.1 9.5 20.4 12 22C14.5 20.4 18 16.1 18 11V4C18 4 12.5 2 12 2ZM12 16C9.8 16 8 14.2 8 12C8 9.8 9.8 8 12 8C14.2 8 16 9.8 16 12C16 14.2 14.2 16 12 16Z'/%3E%3C/svg%3E" />
+
     <title>Oman Pakhtoon Community Welfare Portal</title>
   </head>
-  <body class="bg-slate-950 text-slate-50 antialiased overflow-x-hidden">
-    <div id="root"></div>
+  <body class="bg-[#0b0f19] text-slate-50 antialiased overflow-x-hidden">
+    <div id="root">
+      <!-- High-fidelity aesthetic pre-loader that fades out when React mounts -->
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background-color: #0b0f19; font-family: system-ui, -apple-system, sans-serif;">
+        <div style="position: relative; width: 64px; height: 64px; margin-bottom: 24px;">
+          <!-- Spinning ambient amber glow circle -->
+          <div style="box-sizing: border-box; display: block; position: absolute; width: 64px; height: 64px; border: 3px solid #1e293b; border-radius: 50%;"></div>
+          <div style="box-sizing: border-box; display: block; position: absolute; width: 64px; height: 64px; border: 3px solid transparent; border-top-color: #eab308; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        </div>
+        <h2 style="color: #f8fafc; font-size: 16px; font-weight: 700; letter-spacing: -0.025em; margin: 0; text-transform: uppercase;">OMAN PAKHTOON WELFARE</h2>
+        <p style="color: #64748b; font-size: 11px; font-weight: 500; font-family: monospace; margin-top: 6px; letter-spacing: 0.05em; text-transform: uppercase;">Initializing Secure Portal Node...</p>
+      </div>
+      
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
